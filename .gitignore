@@ -1,9 +1,6 @@
 # Python
 __pycache__/
 *.py[cod]
-*.pyo
-
-# Pytest
 .pytest_cache/
 
 # Virtual environments
@@ -11,15 +8,15 @@ __pycache__/
 venv/
 env/
 
-# Local secrets / environment files
-.env
-.env.*
-!.env.example
+# Coverage
+.coverage
+htmlcov/
+.pytest_cache/
 
-# IDE/editor files
+# IDE
 .vscode/
 .idea/
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db
