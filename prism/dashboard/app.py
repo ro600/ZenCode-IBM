@@ -17,17 +17,22 @@ Or via the helper script::
 
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 from typing import Any
 
-from flask import Flask, jsonify, render_template, request, abort
+from flask import Flask, jsonify, render_template, abort
 
 from prism.dashboard.aggregator import Aggregator, DashboardState, PRMetadata
-from prism.models import Finding, FindingStatus
-from prism.reviewers.test_pilot import TestPilot
-from prism.reviewers.docs_guard import DocsGuard
+from prism.models import Finding, FindingStatus, Category, Severity
+
+# Snehansha's agents
+from agents.sentinel import scan_directory as sentinel_scan
+from agents.logic import scan_directory as logic_scan
+
+# Aaryan's agents
+from agents.test_agent import scan_directory as test_scan
+from agents.doc_agent import scan_directory as doc_scan
 
 # ------------------------------------------------------------------ #
 # App factory                                                          #
@@ -65,9 +70,48 @@ def create_app(
     _state: dict[str, Any] = {"dashboard": None}
 
     def _build_state() -> DashboardState:
+        from prism.models import ReviewResult
         agg = Aggregator(pr=_pr)
-        agg.add_result(TestPilot(root=repo_root).review())
-        agg.add_result(DocsGuard(root=repo_root).review())
+
+        # Run all four agents and wrap their findings into ReviewResult objects
+        for agent_name, scan_fn in [
+            ("Sentinel", sentinel_scan),
+            ("Logic",    logic_scan),
+            ("TestAgent", test_scan),
+            ("DocAgent",  doc_scan),
+        ]:
+            raw = scan_fn(repo_root)
+            result = ReviewResult(reviewer=agent_name)
+            for f in raw:
+                # Map agent Finding -> prism Finding
+                sev_map = {
+                    "CRITICAL": Severity.CRITICAL,
+                    "HIGH":     Severity.HIGH,
+                    "MEDIUM":   Severity.MEDIUM,
+                    "LOW":      Severity.LOW,
+                    "INFO":     Severity.INFO,
+                }
+                cat_map = {
+                    "Sentinel":  Category.SECURITY,
+                    "Logic":     Category.BUG,
+                    "TestAgent": Category.TESTING,
+                    "DocAgent":  Category.DOCUMENTATION,
+                }
+                result.findings.append(Finding(
+                    id=f"{f.rule_id}-{f.line}",
+                    category=cat_map.get(agent_name, Category.BUG),
+                    severity=sev_map.get(f.severity, Severity.MEDIUM),
+                    title=f.message,
+                    description=f.message,
+                    file=f.file,
+                    line=f.line,
+                    evidence=f.snippet or None,
+                    suggested_fix=f.fix_hint or None,
+                    requires_human_approval=f.severity in ("CRITICAL", "HIGH"),
+                    status=FindingStatus.OPEN,
+                ))
+            agg.add_result(result)
+
         state = agg.build()
         _state["dashboard"] = state
         return state
