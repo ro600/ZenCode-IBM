@@ -1,70 +1,51 @@
 """
 Bob Orchestrator — PRISM Workflow Entry Point
 ==============================================
-This module is the single callable entry point for IBM Bob to run the full
-PRISM (Parallel Review and Intelligent Security Monitor) pipeline.
+Single callable entry point for IBM Bob to run the PRISM review pipeline.
 
-IBM Bob Agent-mode usage
-------------------------
-Phase 1 — scan only (no approved_rule_ids):
-
-    from pathlib import Path
-    from agents.bob_orchestrator import run_prism_workflow
-
-    result = run_prism_workflow(Path("app/"), Path("."))
-    print(result["pre_fix_report"].to_markdown())
-    # Bob presents the report in chat and waits for developer approval
-
-Phase 2 — apply approved fixes:
-
-    result = run_prism_workflow(
-        Path("app/"), Path("."),
-        approved_rule_ids=["S-01", "S-02", "S-03", "S-04", "L-01", "L-02", "L-04"],
-    )
-    print(result["fixes_applied"])        # {rule_id: True/False}
-    print(result["post_fix_report"].to_markdown())
-    print("Clean:", not result["post_fix_report"].blocks_merge)
-
-CLI usage
----------
-    python -m agents.bob_orchestrator app/
-    python -m agents.bob_orchestrator app/ --fix S-01 S-02 S-03
+Phase 1: scan and report findings; no files are changed.
+Phase 2: apply only explicitly approved fixes, re-scan, then optionally run
+pytest as the regression gate.
 """
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 from agents.aggregator import ReviewReport, run_review
 from agents.fix_agent import apply_fixes
+
+
+def run_regression_tests(repo_root: Path) -> dict[str, Any]:
+    """Run the repository test suite and return structured execution evidence."""
+    completed = subprocess.run(
+        [sys.executable, "-m", "pytest", "tests/", "-q"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return {
+        "returncode": completed.returncode,
+        "passed": completed.returncode == 0,
+        "stdout": completed.stdout,
+        "stderr": completed.stderr,
+    }
 
 
 def run_prism_workflow(
     target_dir: Path,
     repo_root: Path,
     approved_rule_ids: list[str] | None = None,
-) -> dict:
+    run_tests: bool = False,
+) -> dict[str, Any]:
     """Run the PRISM review pipeline.
 
-    Parameters
-    ----------
-    target_dir:
-        Directory to scan (pass ``Path("app/")`` for the demo app).
-    repo_root:
-        Repository root used to resolve fix-target file paths
-        (pass ``Path(".")`` when running from the repo root).
-    approved_rule_ids:
-        If ``None``, phase 1 only — scan and return the pre-fix report.
-        If a list of rule IDs, phase 2 — apply fixes, re-scan, and return
-        a before/after comparison dict.
-
-    Returns
-    -------
-    dict with keys:
-        ``pre_fix_report``   ReviewReport before any fixes
-        ``fixes_applied``    {rule_id: bool} or None (phase 1 only)
-        ``post_fix_report``  ReviewReport after fixes, or None (phase 1 only)
-        ``regression_clean`` True if post-fix report does not block merge
+    ``approved_rule_ids=None`` performs a read-only review.
+    Passing approved IDs applies only those fixes, then re-scans.
+    ``run_tests=True`` runs the repository regression suite after the fix phase.
     """
     pre_fix_report: ReviewReport = run_review(target_dir)
 
@@ -74,16 +55,23 @@ def run_prism_workflow(
             "fixes_applied": None,
             "post_fix_report": None,
             "regression_clean": None,
+            "test_result": None,
         }
 
     fixes_applied = apply_fixes(approved_rule_ids, repo_root)
     post_fix_report: ReviewReport = run_review(target_dir)
 
+    test_result = run_regression_tests(repo_root) if run_tests else None
+    regression_clean = not post_fix_report.blocks_merge
+    if test_result is not None:
+        regression_clean = regression_clean and bool(test_result["passed"])
+
     return {
         "pre_fix_report": pre_fix_report,
         "fixes_applied": fixes_applied,
         "post_fix_report": post_fix_report,
-        "regression_clean": not post_fix_report.blocks_merge,
+        "regression_clean": regression_clean,
+        "test_result": test_result,
     }
 
 
@@ -91,25 +79,24 @@ def main() -> None:
     """Interactive CLI wrapper for the two-phase PRISM workflow."""
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="PRISM — Bob PR Guardian review pipeline",
-        epilog="Example: python -m agents.bob_orchestrator app/",
-    )
+    parser = argparse.ArgumentParser(description="PRISM — Bob PR Guardian review pipeline")
     parser.add_argument("target_dir", type=Path, help="Directory to scan")
     parser.add_argument(
-        "--fix",
-        nargs="*",
-        metavar="RULE_ID",
+        "--fix", nargs="*", metavar="RULE_ID",
         help="Rule IDs to fix (e.g. S-01 S-02 L-01). Omit to scan only.",
+    )
+    parser.add_argument(
+        "--run-tests", action="store_true",
+        help="Run pytest after approved fixes.",
     )
     args = parser.parse_args()
 
-    target_dir: Path = args.target_dir.resolve()
-    repo_root: Path = Path(".").resolve()
+    target_dir = args.target_dir.resolve()
+    repo_root = Path(".").resolve()
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("  PRISM Review — Phase 1: Scan")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     result = run_prism_workflow(target_dir, repo_root, approved_rule_ids=None)
     report: ReviewReport = result["pre_fix_report"]
@@ -119,14 +106,26 @@ def main() -> None:
         approved = args.fix if args.fix else list(
             {f.rule_id for f in report.findings if f.severity in ("CRITICAL", "HIGH")}
         )
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  PRISM Review — Phase 2: Applying fixes for {approved}")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
-        result2 = run_prism_workflow(target_dir, repo_root, approved_rule_ids=approved)
+        result2 = run_prism_workflow(
+            target_dir,
+            repo_root,
+            approved_rule_ids=approved,
+            run_tests=args.run_tests,
+        )
         print("Fixes applied:", result2["fixes_applied"])
         print()
         print(result2["post_fix_report"].to_markdown())
+
+        if result2["test_result"] is not None:
+            print("\nRegression tests:")
+            print(result2["test_result"]["stdout"])
+            if result2["test_result"]["stderr"]:
+                print(result2["test_result"]["stderr"], file=sys.stderr)
+
         print("Regression clean:", result2["regression_clean"])
         sys.exit(0 if result2["regression_clean"] else 1)
 
