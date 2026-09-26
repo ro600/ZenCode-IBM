@@ -6,7 +6,7 @@ through an interactive dashboard.
 
 ---
 
-## Person 2 Scope — Components Implemented
+## Aaryan Scope — Components Implemented
 
 | Component | Location | Description |
 |-----------|----------|-------------|
@@ -241,7 +241,7 @@ Person 1 reviewers (Sentinel, Logic) should:
 2. Populate it with `Finding` objects using the shared enums.
 3. Pass the result to `Aggregator.add_result()`.
 
-No changes to Person 2 code are required for this integration.
+No changes to Aaryan's code are required for this integration.
 
 If Person 1 has already defined a different `Finding` schema, the
 `Aggregator` can be extended with an adapter — the dashboard only
@@ -249,7 +249,7 @@ consumes `DashboardState.to_dict()` and is schema-agnostic.
 
 ---
 
-## Repository Structure (Person 2 files)
+## Repository Structure (Aaryan files)
 
 ```
 prism/
@@ -273,7 +273,7 @@ requirements.txt
 run_dashboard.py
 README.md
 docs/
-└── person2.md                   # This document (component reference)
+└── aaryan.md                    # This document (component reference)
 ```
 
 ---

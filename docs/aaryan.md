@@ -1,6 +1,6 @@
-# PRISM Person 2 — Component Reference
+# PRISM Aaryan — Component Reference
 
-This document is the canonical reference for the Person 2 components:
+This document is the canonical reference for the Aaryan components:
 TestPilot, DocsGuard, Aggregator, and the PRISM Dashboard.
 
 See [README.md](../README.md) for the project overview and quick-start guide.

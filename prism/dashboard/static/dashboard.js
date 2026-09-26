@@ -1,6 +1,6 @@
 /**
  * PRISM Dashboard — Frontend JS
- * Person 2 / feature/prism-person2
+ * Aaryan / aaryan
  *
  * Communicates with the Flask backend via /api/* endpoints.
  * All state is sourced from the backend — nothing is hardcoded here.
