@@ -1,18 +1,51 @@
-# PRISM — PR Intelligent Security Monitor
+# Bob PR Guardian — PRISM Review System
 
-PRISM is an automated pull-request review system that runs multiple specialised
-reviewers against a repository, aggregates their findings, and presents them
-through an interactive dashboard.
+> **P**arallel **R**eview and **I**ntelligent **S**ecurity **M**onitor
+
+An AI-powered Pull Request reviewer and auto-fixer built on IBM Bob.
 
 ---
 
-## Aaryan Scope — Components Implemented
+## Architecture
+
+```
+PR / Code Changes
+       │
+       ▼
+IBM Bob Agent
+       │
+┌──────┼──────────────┐
+▼      ▼      ▼       ▼
+Sentinel  Logic  TestAgent  DocAgent
+       │
+       ▼
+Review Aggregator ──► Dashboard (Flask UI)
+       │
+  ┌────┴────┐
+  ▼         ▼
+Report   Auto Fix → Run Tests
+```
+
+---
+
+## Agents
+
+### Person 1 — Snehansha (Security & Logic)
+
+| Agent | File | Role |
+|-------|------|------|
+| **Sentinel** | `agents/sentinel.py` | Security review — secrets, SQL injection, auth |
+| **Logic** | `agents/logic.py` | Correctness — null handling, edge cases |
+| **Aggregator** | `agents/aggregator.py` | Merges findings, classifies severity |
+| **Fix Agent** | `agents/fix_agent.py` | Applies approved patches, reruns tests |
+
+### Person 2 — Aaryan (Testing & Docs + Dashboard)
 
 | Component | Location | Description |
 |-----------|----------|-------------|
+| **TestAgent** | `agents/test_agent.py` | Testing reviewer — finds missing tests and coverage gaps |
+| **DocAgent** | `agents/doc_agent.py` | Documentation reviewer — finds doc/code inconsistencies |
 | **Shared Models** | `prism/models.py` | `Finding`, `ReviewResult`, enums shared by all reviewers |
-| **TestPilot** | `prism/reviewers/test_pilot.py` | Testing reviewer — finds missing tests and coverage gaps |
-| **DocsGuard** | `prism/reviewers/docs_guard.py` | Documentation reviewer — finds doc/code inconsistencies |
 | **Aggregator** | `prism/dashboard/aggregator.py` | Merges reviewer outputs into `DashboardState` |
 | **Dashboard App** | `prism/dashboard/app.py` | Flask web app + REST API |
 | **Dashboard UI** | `prism/dashboard/templates/` & `static/` | HTML/CSS/JS single-page interface |
@@ -27,7 +60,13 @@ through an interactive dashboard.
 pip install -r requirements.txt
 ```
 
-### 2. Run the dashboard
+### 2. Run the FastAPI app (Snehansha)
+
+```bash
+uvicorn app.main:app --reload
+```
+
+### 3. Run the Dashboard (Aaryan)
 
 ```bash
 python run_dashboard.py
@@ -35,7 +74,7 @@ python run_dashboard.py
 
 Open **http://localhost:5000** in your browser.
 
-### 3. Point at a specific repository
+### 4. Point the dashboard at a specific repository
 
 ```bash
 PRISM_REPO_ROOT=/path/to/repo \
@@ -47,238 +86,102 @@ python run_dashboard.py
 
 ---
 
-## Architecture
+## Run Tests
 
+```bash
+pytest tests/ -v
 ```
-┌──────────────┐   ReviewResult   ┌─────────────┐   DashboardState   ┌───────────┐
-│  TestPilot   │ ───────────────► │             │ ─────────────────► │ Dashboard │
-├──────────────┤                  │  Aggregator │                     │   (UI)    │
-│  DocsGuard   │ ───────────────► │             │                     └───────────┘
-├──────────────┤                  └─────────────┘
-│  Sentinel *  │  (* Person 1)
-├──────────────┤
-│  Logic    *  │  (* Person 1)
-└──────────────┘
-```
-
-All reviewers produce `ReviewResult` objects containing `Finding` items.
-The `Aggregator` merges them.  The dashboard reads only from the `Aggregator`.
 
 ---
 
-## Finding Structure
-
-```json
-{
-  "id": "TEST-001",
-  "category": "testing",
-  "severity": "high",
-  "title": "No test file for auth.py",
-  "description": "No corresponding test file was found for 'auth.py'.",
-  "file": "prism/auth.py",
-  "line": null,
-  "evidence": "Searched for test_auth.py / auth_test.py in test directories.",
-  "suggested_fix": "Create tests/test_auth.py and add unit tests.",
-  "fix_recommendation": "Add a test file with at least happy-path and error-path tests.",
-  "requires_human_approval": false,
-  "status": "open"
-}
-```
-
-### Categories
-
-| Value | Description |
-|-------|-------------|
-| `bug` | Logic errors or incorrect behaviour |
-| `security` | Security vulnerabilities or missing controls |
-| `testing` | Missing or insufficient test coverage |
-| `documentation` | Docs missing, inaccurate, or out of sync with code |
-
-### Severities
-
-`critical` → `high` → `medium` → `low` → `info`
-
-### Statuses
-
-| Value | Meaning |
-|-------|---------|
-| `open` | Finding not yet actioned |
-| `approved` | Fix approved by a reviewer |
-| `rejected` | Fix rejected |
-| `fixed` | Applied and verified |
-| `pending_review` | Awaiting human decision |
-
----
-
-## Components
-
-### TestPilot
-
-Static analysis reviewer that identifies test quality issues.
-
-**Checks performed:**
-- Missing test file for a source module
-- Test file present but contains no assertions
-- Public functions with no corresponding test
-- No edge-case / error-path tests detected
-- Authentication logic without authentication tests
-- No regression tests present
-
-**Usage:**
-```python
-from prism.reviewers import TestPilot
-
-result = TestPilot(root="/path/to/repo").review()
-for finding in result.findings:
-    print(finding.id, finding.severity, finding.title)
-```
-
-**Constructor parameters:**
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `root` | `"."` | Repository root to scan |
-| `source_dirs` | `["src","app","lib","prism","."]` | Source directories |
-| `test_dirs` | `["tests","test"]` | Test directories |
-
----
-
-### DocsGuard
-
-Static analysis reviewer that identifies documentation inconsistencies.
-
-**Checks performed:**
-- No README or documentation file found
-- Documentation references a file that does not exist
-- Documented API endpoint not found in source code
-- Implemented route not mentioned in documentation
-- Public functions missing docstrings
-- Public classes missing docstrings
-
-**Usage:**
-```python
-from prism.reviewers import DocsGuard
-
-result = DocsGuard(root="/path/to/repo").review()
-for finding in result.findings:
-    print(finding.id, finding.severity, finding.title)
-```
-
-**Constructor parameters:**
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `root` | `"."` | Repository root to scan |
-| `doc_files` | `["README.md", "docs/api.md", ...]` | Documentation files to check |
-
----
-
-### Aggregator
-
-Merges `ReviewResult` objects from all reviewers into a single `DashboardState`.
+## Run a Review (CLI)
 
 ```python
-from prism.dashboard import Aggregator, PRMetadata
-from prism.reviewers import TestPilot, DocsGuard
+from pathlib import Path
+from agents.aggregator import run_review
 
-pr = PRMetadata(repository="org/repo", pull_request="#42")
-agg = Aggregator(pr=pr)
-agg.add_result(TestPilot(root=".").review())
-agg.add_result(DocsGuard(root=".").review())
-state = agg.build()
-
-print(state.total_findings)
-print(state.overall_risk)
-print(state.review_status)
+report = run_review(Path("app/"))
+print(report.to_markdown())
 ```
 
-**Integration with Person 1 reviewers:**
+## Apply Fixes
 
 ```python
-# Person 1's Sentinel and Logic reviewers produce ReviewResult objects
-# of the same shape — just add them to the Aggregator:
-agg.add_result(sentinel_result)
-agg.add_result(logic_result)
+from pathlib import Path
+from agents.fix_agent import apply_all_fixes
+
+results = apply_all_fixes(Path("."))
+print(results)
 ```
 
 ---
 
-### Dashboard
+## Intentional Bugs (Demo PR)
 
-A Flask web application with a REST API and a browser-based UI.
+The base app contains **7 intentional issues** for the demo:
 
-#### REST API
+| # | ID | Severity | Issue |
+|---|-----|----------|-------|
+| 1 | L-01 | HIGH | No balance check before transfer |
+| 2 | S-03 | HIGH | Plain-text password storage |
+| 3 | S-01 | CRITICAL | Hardcoded JWT secret |
+| 4 | S-04 | CRITICAL | Weak JWT configuration |
+| 5 | S-02 | CRITICAL | SQL injection in email lookup |
+| 6 | L-02 | MEDIUM | Division by zero (no guard) |
+| 7 | L-04 | HIGH | Unhandled jwt.decode exception |
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/` | Dashboard HTML page |
-| `GET` | `/api/state` | Full `DashboardState` as JSON |
-| `POST` | `/api/refresh` | Re-run all reviewers, return fresh state |
-| `POST` | `/api/findings/<id>/approve` | Approve a finding fix |
-| `POST` | `/api/findings/<id>/reject` | Reject a finding fix |
-| `POST` | `/api/findings/<id>/fix` | Mark a finding as fixed |
-| `GET` | `/api/results` | Final results summary |
-
-#### Programmatic usage
-
-```python
-from prism.dashboard import create_app, PRMetadata
-
-app = create_app(
-    repo_root="/path/to/repo",
-    pr_metadata=PRMetadata(repository="org/repo", pull_request="#42"),
-)
-app.run(port=5000)
-```
+See [`docs/intentional_bugs.md`](docs/intentional_bugs.md) for full details.
 
 ---
 
-## Integration with Person 1
-
-Person 1 reviewers (Sentinel, Logic) should:
-
-1. Return a `ReviewResult` object from `prism.models`.
-2. Populate it with `Finding` objects using the shared enums.
-3. Pass the result to `Aggregator.add_result()`.
-
-No changes to Aaryan's code are required for this integration.
-
-If Person 1 has already defined a different `Finding` schema, the
-`Aggregator` can be extended with an adapter — the dashboard only
-consumes `DashboardState.to_dict()` and is schema-agnostic.
-
----
-
-## Repository Structure (Aaryan files)
+## Repository Structure
 
 ```
+agents/
+├── sentinel.py         # Security reviewer (Snehansha)
+├── logic.py            # Logic reviewer (Snehansha)
+├── aggregator.py       # Review aggregator (Snehansha)
+├── fix_agent.py        # Auto-fixer (Snehansha)
+├── test_agent.py       # Testing reviewer (Aaryan)
+└── doc_agent.py        # Docs reviewer (Aaryan)
+app/
+├── main.py             # FastAPI entry point
+├── models.py           # ORM models (intentional bugs)
+├── crud.py             # Business logic
+├── auth.py             # JWT auth
+├── schemas.py          # Pydantic schemas
+└── database.py         # DB setup
 prism/
-├── __init__.py
-├── models.py                   # Shared Finding / ReviewResult models
+├── models.py           # Shared Finding / ReviewResult models (Aaryan)
 ├── reviewers/
-│   ├── __init__.py
-│   ├── test_pilot.py           # TestPilot reviewer
-│   └── docs_guard.py           # DocsGuard reviewer
+│   ├── test_pilot.py   # TestPilot reviewer (Aaryan)
+│   └── docs_guard.py   # DocsGuard reviewer (Aaryan)
 └── dashboard/
-    ├── __init__.py
-    ├── aggregator.py            # Aggregator + DashboardState
-    ├── app.py                   # Flask app + REST API
-    ├── templates/
-    │   └── dashboard.html       # Dashboard SPA
-    └── static/
-        ├── dashboard.css        # Styles
-        └── dashboard.js         # Frontend logic
-
+    ├── aggregator.py   # Aggregator + DashboardState (Aaryan)
+    ├── app.py          # Flask app + REST API (Aaryan)
+    ├── templates/      # Dashboard HTML
+    └── static/         # Dashboard CSS/JS
+tests/
+├── conftest.py
+├── test_baseline.py
+└── test_regression.py
 requirements.txt
 run_dashboard.py
-README.md
-docs/
-└── aaryan.md                    # This document (component reference)
 ```
 
 ---
 
-## Environment Variables
+## Docs
+
+- [`docs/architecture.md`](docs/architecture.md)
+- [`docs/prism_protocol.md`](docs/prism_protocol.md)
+- [`docs/security_review_process.md`](docs/security_review_process.md)
+- [`docs/aaryan.md`](docs/aaryan.md)
+- [`AGENTS.md`](AGENTS.md)
+
+---
+
+## Environment Variables (Dashboard)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
