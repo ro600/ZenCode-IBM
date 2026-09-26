@@ -1,4 +1,4 @@
-﻿# Intentional Bugs Catalogue
+# Intentional Bugs Catalogue
 
 This file documents the 7 intentional issues seeded into the demo application
 for the Bob PR Guardian demonstration.
@@ -12,6 +12,18 @@ for the Bob PR Guardian demonstration.
 | 5 | S-02 | Sentinel | CRITICAL | `app/crud.py` | SQL injection via f-string in `get_user_by_email` |
 | 6 | L-02 | Logic | MEDIUM | `app/crud.py` | `divide_balance` divides without zero guard |
 | 7 | L-04 | Logic | HIGH | `app/auth.py` | `decode_access_token` calls `jwt.decode` without try/except |
+
+## Additional Detectable Issue — S-05
+
+All 8 endpoints in `app/main.py` lack authentication dependencies. None include
+`Depends(get_current_user)` or a `decode_access_token` call in their signature.
+The Sentinel S-05 check flags every unprotected route handler.
+
+This is intentional for the demo — S-05 is a **detection-only** rule (no auto-fix
+is registered) because adding authentication to all routes is an architectural
+decision that goes beyond a single-line patch. The `/health` and `/login`
+endpoints are also legitimately public, which illustrates how the rule can
+produce findings that require human review rather than automatic remediation.
 
 ## Details
 

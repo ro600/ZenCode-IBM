@@ -9,7 +9,10 @@ Intentional Issues:
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app import models, schemas
+from passlib.context import CryptContext
 from app.auth import create_access_token
+
+pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 
 
 # ---------------------------------------------------------------------------
@@ -21,7 +24,7 @@ def create_user(db: Session, user_in: schemas.UserCreate) -> models.User:
     db_user = models.User(
         username=user_in.username,
         email=user_in.email,
-        password=user_in.password,   # BUG-2: no hashing
+        password=pwd_context.hash(user_in.password),
     )
     db.add(db_user)
     db.commit()
@@ -39,8 +42,8 @@ def get_user_by_username(db: Session, username: str) -> models.User | None:
 
 def get_user_by_email(db: Session, email: str) -> models.User | None:
     """BUG-5: raw f-string SQL — vulnerable to SQL injection."""
-    query = text(f"SELECT * FROM users WHERE email = '{email}'")  # noqa: S608
-    result = db.execute(query).fetchone()
+    query = text("SELECT * FROM users WHERE email = :email")
+    result = db.execute(query, {"email": email}).fetchone()
     return result  # type: ignore[return-value]
 
 
@@ -53,7 +56,7 @@ def login(db: Session, username: str, password: str) -> str | None:
     user = get_user_by_username(db, username)
     if user is None:
         return None
-    if user.password != password:   # BUG-2: plain-text compare
+    if not pwd_context.verify(password, user.password):
         return None
     return create_access_token({"sub": str(user.id)})
 
@@ -87,7 +90,8 @@ def transfer_funds(
     receiver = get_user(db, to_user_id)
     if sender is None or receiver is None:
         return False
-    # BUG-1: missing:  if sender.balance < amount: return False
+    if sender.balance < amount:
+        return False
     sender.balance -= amount
     receiver.balance += amount
     db.commit()
@@ -99,7 +103,9 @@ def divide_balance(db: Session, user_id: int, divisor: float) -> float:
     user = get_user(db, user_id)
     if user is None:
         return 0.0
-    return user.balance / divisor   # BUG-6: ZeroDivisionError when divisor == 0
+    if divisor == 0:
+        raise ValueError("divisor cannot be zero")
+    return user.balance / divisor
 
 
 # ---------------------------------------------------------------------------

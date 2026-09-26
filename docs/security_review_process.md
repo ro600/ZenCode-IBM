@@ -24,6 +24,7 @@ agents review code changes, and how the Fix Agent applies approved patches.
 | S-02 | SQL injection | `text(f"...{var}...")` or `execute(f"...")` |
 | S-03 | Plain-text password | `user.password != password` or `password = user_in.password` |
 | S-04 | Weak JWT secret | `SECRET_KEY = "..."` literal in source |
+| S-05 | Unauthenticated endpoint | `@app.get/post(` decorator followed by `def` with no `Depends(get_current_user)` or `decode_access_token` in signature |
 
 ### Findings Format
 
@@ -48,7 +49,8 @@ Finding(
 
 1. Logic agent receives a target directory path
 2. It iterates every `.py` file using `scan_directory(path)`
-3. Each file is passed through 3 checks (L-01, L-02, L-04)
+3. Each file is passed through 4 checks (L-01 through L-04)
+4. Findings are returned as `list[Finding]` with severity, file, line, snippet, and fix hint
 
 ### Checks
 
@@ -56,6 +58,7 @@ Finding(
 |------|-------|---------|
 | L-01 | Missing balance guard | `def transfer_funds` with `sender.balance -=` but no prior `sender.balance < amount` |
 | L-02 | Division without zero guard | `/ divisor` with no `if divisor == 0` in nearby context |
+| L-03 | Implicit None return | Function annotated `-> T` (non-Optional) containing explicit `return None` |
 | L-04 | Unhandled jwt.decode | `jwt.decode(` not wrapped in `try:` block |
 
 ---

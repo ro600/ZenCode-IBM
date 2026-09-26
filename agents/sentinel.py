@@ -159,6 +159,44 @@ def _check_weak_jwt(path: Path, source_lines: list[str]) -> list[Finding]:
     return findings
 
 
+_ROUTE_DECORATOR_RE = re.compile(r'@app\.(get|post|put|patch|delete)\(')
+_AUTH_DEPENDENCY_RE = re.compile(r'decode_access_token|Depends\(get_current_user\)')
+
+
+def _check_unauthenticated_endpoints(path: Path, source_lines: list[str]) -> list[Finding]:
+    """Detect route handlers that have no authentication dependency in their signature."""
+    findings: list[Finding] = []
+    n = len(source_lines)
+    for i, line in enumerate(source_lines):
+        stripped = line.strip()
+        if _ROUTE_DECORATOR_RE.search(stripped):
+            # Look ahead up to 5 lines to find the def statement and its signature
+            for j in range(i + 1, min(i + 6, n)):
+                sig_line = source_lines[j].strip()
+                if sig_line.startswith("def ") or sig_line.startswith("async def "):
+                    # Collect the full signature (may span multiple lines up to the colon)
+                    sig = sig_line
+                    k = j + 1
+                    while ":" not in sig and k < min(j + 6, n):
+                        sig += " " + source_lines[k].strip()
+                        k += 1
+                    if not _AUTH_DEPENDENCY_RE.search(sig):
+                        findings.append(
+                            Finding(
+                                agent="Sentinel",
+                                rule_id="S-05",
+                                severity="HIGH",
+                                file=str(path),
+                                line=j + 1,  # 1-based
+                                message="Route handler has no authentication dependency",
+                                snippet=sig_line,
+                                fix_hint="Add Depends(get_current_user) parameter or require decode_access_token",
+                            )
+                        )
+                    break
+    return findings
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -171,6 +209,7 @@ def scan_file(path: Path) -> list[Finding]:
     findings.extend(_check_sql_injection(path, source_lines))
     findings.extend(_check_plain_text_password(path, source_lines))
     findings.extend(_check_weak_jwt(path, source_lines))
+    findings.extend(_check_unauthenticated_endpoints(path, source_lines))
     return findings
 
 

@@ -118,6 +118,32 @@ def test_sentinel_detects_plain_password_storage(tmp_path):
     assert any(x.rule_id == "S-03" for x in findings)
 
 
+def test_sentinel_detects_unauthenticated_endpoint(tmp_path):
+    f = tmp_path / "main.py"
+    f.write_text(
+        "@app.post('/transfer')\n"
+        "async def transfer(payload: dict):\n"
+        "    pass\n"
+    )
+    findings = sentinel_scan(tmp_path)
+    assert any(x.rule_id == "S-05" for x in findings), (
+        "Expected S-05 finding for unauthenticated route"
+    )
+
+
+def test_sentinel_no_s05_when_auth_present(tmp_path):
+    f = tmp_path / "main.py"
+    f.write_text(
+        "@app.get('/profile')\n"
+        "async def get_profile(current_user=Depends(get_current_user)):\n"
+        "    pass\n"
+    )
+    findings = sentinel_scan(tmp_path)
+    assert not any(x.rule_id == "S-05" for x in findings), (
+        "S-05 should not fire when Depends(get_current_user) is present"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Logic agent unit tests
 # ---------------------------------------------------------------------------
@@ -150,3 +176,36 @@ def test_logic_detects_unhandled_jwt(tmp_path):
     from agents.logic import scan_directory
     findings = scan_directory(tmp_path)
     assert any(x.rule_id == "L-04" for x in findings)
+
+
+def test_logic_detects_implicit_none_return(tmp_path):
+    """L-03: function typed -> str that explicitly returns None should be flagged."""
+    f = tmp_path / "service.py"
+    f.write_text(
+        "def get_token(user_id: int) -> str:\n"
+        "    if user_id <= 0:\n"
+        "        return None\n"
+        "    return 'tok_' + str(user_id)\n"
+    )
+    from agents.logic import scan_directory
+    findings = scan_directory(tmp_path)
+    assert any(x.rule_id == "L-03" for x in findings), (
+        "Expected L-03 finding for non-Optional function returning None"
+    )
+
+
+def test_logic_no_l03_when_optional_annotated(tmp_path):
+    """L-03 must NOT fire when the return type already includes None."""
+    f = tmp_path / "service.py"
+    f.write_text(
+        "from __future__ import annotations\n"
+        "def get_token(user_id: int) -> str | None:\n"
+        "    if user_id <= 0:\n"
+        "        return None\n"
+        "    return 'tok_' + str(user_id)\n"
+    )
+    from agents.logic import scan_directory
+    findings = scan_directory(tmp_path)
+    assert not any(x.rule_id == "L-03" for x in findings), (
+        "L-03 must not fire when return type is already Optional (str | None)"
+    )

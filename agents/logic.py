@@ -89,6 +89,63 @@ def _check_division_zero(path: Path, source_lines: list[str]) -> list[Finding]:
     return findings
 
 
+def _check_implicit_none_return(path: Path, source_lines: list[str]) -> list[Finding]:
+    """Detect functions with a non-Optional return annotation that contain
+    an explicit ``return None`` statement.
+
+    Flags annotations like ``-> str:``, ``-> int:``, ``-> dict:`` but NOT
+    ``-> str | None:``, ``-> Optional[...]:``, or ``-> None:``.
+    """
+    findings: list[Finding] = []
+    # Matches: ) -> SomeType: where SomeType does NOT contain None or Optional
+    return_ann_re = re.compile(r'\)\s*->\s*([^:#]+?):\s*$')
+    in_flagged_func = False
+    func_line = 0
+
+    for i, line in enumerate(source_lines, 1):
+        stripped = line.strip()
+
+        # Detect a new function definition with a non-optional return annotation
+        if re.match(r'(async\s+)?def\s+\w+', stripped):
+            m = return_ann_re.search(stripped)
+            if m:
+                ann = m.group(1).strip()
+                # Skip if annotation is None, Optional[...], or contains | None
+                if (ann == "None"
+                        or "None" in ann
+                        or "Optional" in ann):
+                    in_flagged_func = False
+                else:
+                    in_flagged_func = True
+                    func_line = i
+            else:
+                in_flagged_func = False
+
+        # Inside a flagged function, look for explicit return None
+        if in_flagged_func and i > func_line:
+            # A new def/class at same or lower indent ends the function scope
+            if re.match(r'^(def |class |async def )', stripped) and i > func_line + 1:
+                in_flagged_func = False
+            elif re.match(r'return\s+None\b', stripped):
+                findings.append(
+                    Finding(
+                        agent="Logic",
+                        rule_id="L-03",
+                        severity="MEDIUM",
+                        file=str(path),
+                        line=i,
+                        message="Function with non-Optional return annotation explicitly returns None",
+                        snippet=stripped,
+                        fix_hint=(
+                            "Either change return type to include None "
+                            "(e.g. -> str | None) or raise an exception instead of returning None"
+                        ),
+                    )
+                )
+
+    return findings
+
+
 def _check_unhandled_jwt_decode(path: Path, source_lines: list[str]) -> list[Finding]:
     """Detect jwt.decode calls without exception handling."""
     findings: list[Finding] = []
@@ -124,6 +181,7 @@ def scan_file(path: Path) -> list[Finding]:
     findings: list[Finding] = []
     findings.extend(_check_missing_balance_guard(path, source_lines))
     findings.extend(_check_division_zero(path, source_lines))
+    findings.extend(_check_implicit_none_return(path, source_lines))
     findings.extend(_check_unhandled_jwt_decode(path, source_lines))
     return findings
 

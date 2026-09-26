@@ -64,7 +64,7 @@ class ReviewReport:
     def to_markdown(self) -> str:
         lines = ["# PRISM Review Report", ""]
         lines.append(f"**Total findings:** {self.total}  ")
-        lines.append(f"**Merge blocked:** {'YES ⛔' if self.blocks_merge else 'NO ✅'}  ")
+        lines.append(f"**Merge blocked:** {'YES [BLOCKED]' if self.blocks_merge else 'NO [CLEAN]'}  ")
         lines.append("")
 
         # Summary table

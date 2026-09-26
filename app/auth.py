@@ -8,7 +8,9 @@ from datetime import datetime, timedelta, timezone
 from jose import jwt
 
 # BUG-3: hardcoded secret
-SECRET_KEY = "super_secret_key_1234"   # noqa: S105
+import os
+
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "changeme-in-production")  # noqa: S105
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
@@ -21,5 +23,7 @@ def create_access_token(data: dict) -> str:
 
 
 def decode_access_token(token: str) -> dict:
-    # BUG-4: no verification of audience/issuer, exception not handled
-    return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    try:
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except Exception:
+        return {}
