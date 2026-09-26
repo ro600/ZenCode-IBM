@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PRISM — PR Review Dashboard</title>
+  <link rel="stylesheet" href="/static/dashboard.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  HEADER                                                         -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<header class="header">
+  <div class="header-inner">
+    <div class="header-brand">
+      <span class="logo">◈</span>
+      <span class="brand-name">PRISM</span>
+      <span class="brand-sub">PR Intelligent Security Monitor</span>
+    </div>
+    <button id="btn-refresh" class="btn btn-outline">↻ Refresh</button>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- ─────────────────────────────────────────────────────────── -->
+  <!--  PR OVERVIEW                                                 -->
+  <!-- ─────────────────────────────────────────────────────────── -->
+  <section class="card" id="section-overview">
+    <h2 class="card-title">PR Overview</h2>
+    <div class="overview-grid">
+      <div class="overview-item">
+        <span class="overview-label">Repository</span>
+        <span class="overview-value" id="ov-repository">—</span>
+      </div>
+      <div class="overview-item">
+        <span class="overview-label">Pull Request</span>
+        <span class="overview-value" id="ov-pull-request">—</span>
+      </div>
+      <div class="overview-item">
+        <span class="overview-label">Branch</span>
+        <span class="overview-value" id="ov-branch">—</span>
+      </div>
+      <div class="overview-item">
+        <span class="overview-label">Review Status</span>
+        <span class="overview-value badge" id="ov-status">—</span>
+      </div>
+      <div class="overview-item">
+        <span class="overview-label">Overall Risk</span>
+        <span class="overview-value badge" id="ov-risk">—</span>
+      </div>
+      <div class="overview-item">
+        <span class="overview-label">Total Findings</span>
+        <span class="overview-value" id="ov-total">—</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────── -->
+  <!--  FINDING SUMMARY                                             -->
+  <!-- ─────────────────────────────────────────────────────────── -->
+  <section class="card" id="section-summary">
+    <h2 class="card-title">Finding Summary</h2>
+    <div class="summary-grid">
+      <div class="summary-tile tile-bug">
+        <span class="tile-count" id="sum-bugs">0</span>
+        <span class="tile-label">Bugs</span>
+      </div>
+      <div class="summary-tile tile-security">
+        <span class="tile-count" id="sum-security">0</span>
+        <span class="tile-label">Security</span>
+      </div>
+      <div class="summary-tile tile-testing">
+        <span class="tile-count" id="sum-testing">0</span>
+        <span class="tile-label">Testing</span>
+      </div>
+      <div class="summary-tile tile-docs">
+        <span class="tile-count" id="sum-docs">0</span>
+        <span class="tile-label">Documentation</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────── -->
+  <!--  FINDING DETAILS + FIX CONTROLS                             -->
+  <!-- ─────────────────────────────────────────────────────────── -->
+  <section class="card" id="section-findings">
+    <div class="findings-header">
+      <h2 class="card-title">Findings</h2>
+      <div class="filter-bar">
+        <label for="filter-category">Category</label>
+        <select id="filter-category">
+          <option value="all">All</option>
+          <option value="bug">Bug</option>
+          <option value="security">Security</option>
+          <option value="testing">Testing</option>
+          <option value="documentation">Documentation</option>
+        </select>
+        <label for="filter-severity">Severity</label>
+        <select id="filter-severity">
+          <option value="all">All</option>
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+          <option value="info">Info</option>
+        </select>
+        <label for="filter-status">Status</label>
+        <select id="filter-status">
+          <option value="all">All</option>
+          <option value="open">Open</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+          <option value="fixed">Fixed</option>
+          <option value="pending_review">Pending Review</option>
+        </select>
+      </div>
+    </div>
+    <div id="findings-list" class="findings-list">
+      <p class="loading-msg">Loading findings…</p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────── -->
+  <!--  FINAL RESULTS                                               -->
+  <!-- ─────────────────────────────────────────────────────────── -->
+  <section class="card" id="section-results">
+    <h2 class="card-title">Final Results</h2>
+    <div class="results-grid">
+      <div class="result-item">
+        <span class="result-label">Findings Before</span>
+        <span class="result-value" id="res-before">—</span>
+      </div>
+      <div class="result-item">
+        <span class="result-label">Findings After</span>
+        <span class="result-value" id="res-after">—</span>
+      </div>
+      <div class="result-item">
+        <span class="result-label">Fixes Applied</span>
+        <span class="result-value" id="res-fixes">—</span>
+      </div>
+      <div class="result-item">
+        <span class="result-label">Tests Generated</span>
+        <span class="result-value" id="res-tests-gen">—</span>
+      </div>
+      <div class="result-item">
+        <span class="result-label">Tests Passed</span>
+        <span class="result-value" id="res-tests-pass">—</span>
+      </div>
+      <div class="result-item">
+        <span class="result-label">Tests Failed</span>
+        <span class="result-value" id="res-tests-fail">—</span>
+      </div>
+      <div class="result-item result-item-wide">
+        <span class="result-label">Final PR Status</span>
+        <span class="result-value badge" id="res-pr-status">—</span>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  FINDING CARD TEMPLATE (cloned by JS)                          -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<template id="tpl-finding">
+  <article class="finding-card">
+    <div class="finding-head">
+      <span class="finding-id"></span>
+      <span class="finding-category badge"></span>
+      <span class="finding-severity badge"></span>
+      <span class="finding-status badge"></span>
+      <span class="human-badge" title="Requires human review">👁 Human Review</span>
+    </div>
+    <h3 class="finding-title"></h3>
+    <p class="finding-description"></p>
+    <dl class="finding-meta">
+      <div class="meta-row" data-key="file">
+        <dt>File</dt><dd class="finding-file"></dd>
+      </div>
+      <div class="meta-row" data-key="line">
+        <dt>Line</dt><dd class="finding-line"></dd>
+      </div>
+      <div class="meta-row" data-key="evidence">
+        <dt>Evidence</dt><dd class="finding-evidence"></dd>
+      </div>
+      <div class="meta-row" data-key="suggested_fix">
+        <dt>Suggested Fix</dt><dd class="finding-fix"></dd>
+      </div>
+    </dl>
+    <div class="finding-actions">
+      <button class="btn btn-approve" data-action="approve">✓ Approve Fix</button>
+      <button class="btn btn-reject" data-action="reject">✕ Reject Fix</button>
+    </div>
+  </article>
+</template>
+
+<script src="/static/dashboard.js"></script>
+</body>
+</html>
