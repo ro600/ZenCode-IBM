@@ -34,7 +34,7 @@ Report   Fix Agent → Re-scan → pytest gate
 
 ## Agents
 
-### Security & Logic - Snehansha
+### Security & Logic 
 
 | Agent | File | Checks |
 |-------|------|--------|
@@ -44,7 +44,7 @@ Report   Fix Agent → Re-scan → pytest gate
 | **Fix Agent** | `agents/fix_agent.py` | Applies approved patches keyed by rule ID, re-scans to confirm clean |
 | **Orchestrator** | `agents/bob_orchestrator.py` | CLI + programmatic entry point for the full scan → fix → verify pipeline |
 
-### Testing & Docs + Dashboard - Aaryan
+### Testing & Docs + Dashboard 
 
 | Component | File | Role |
 |-----------|------|------|
