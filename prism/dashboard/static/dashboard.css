@@ -323,3 +323,86 @@ body {
 .result-item-wide { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; }
 .result-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
 .result-value { font-size: 1.3rem; font-weight: 700; }
+
+/* ── Config bar ──────────────────────────────────────────────── */
+.config-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 1.5rem;
+}
+
+.config-form {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  align-items: flex-end;
+}
+
+.config-field {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  flex: 1 1 140px;
+}
+
+.config-field-wide { flex: 2 1 240px; }
+
+.config-field label {
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.config-hint {
+  font-weight: 400;
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: .7rem;
+}
+
+.config-field input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: .85rem;
+  padding: .4rem .65rem;
+  outline: none;
+  transition: border-color .15s;
+  width: 100%;
+}
+.config-field input:focus { border-color: var(--accent); }
+.config-field input::placeholder { color: var(--muted); opacity: .6; }
+
+.config-field code {
+  background: var(--surface2);
+  border-radius: 3px;
+  font-size: .74rem;
+  padding: .05rem .3rem;
+}
+
+.config-actions {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-shrink: 0;
+  padding-bottom: 1px;
+}
+
+.config-error { color: #fca5a5; font-size: .8rem; }
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  padding: .42rem 1.1rem;
+  font-size: .85rem;
+  white-space: nowrap;
+}
+.btn-primary:hover { background: #4f46e5; }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+

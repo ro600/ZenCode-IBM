@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PRISM — PR Review Dashboard</title>
-  <link rel="stylesheet" href="/static/dashboard.css" />
+  <link rel="stylesheet" href="/static/dashboard.css?v=4" />
 </head>
 <body>
 
@@ -18,9 +18,44 @@
       <span class="brand-name">PRISM</span>
       <span class="brand-sub">PR Intelligent Security Monitor</span>
     </div>
-    <button id="btn-refresh" class="btn btn-outline">↻ Refresh</button>
+    <div style="display:flex;gap:.5rem;align-items:center">
+      <button id="btn-config" class="btn btn-outline">⚙ Configure</button>
+      <button id="btn-refresh" class="btn btn-outline">↻ Refresh</button>
+    </div>
   </div>
 </header>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  CONFIG BAR (collapsed by default, toggled by ⚙ Configure)     -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="config-bar" class="config-bar" style="display:none">
+  <form id="config-form" class="config-form" autocomplete="off">
+    <div class="config-field">
+      <label for="cfg-repo">Repository</label>
+      <input id="cfg-repo" type="text" placeholder="org/repo" />
+    </div>
+    <div class="config-field">
+      <label for="cfg-pr">Pull Request</label>
+      <input id="cfg-pr" type="text" placeholder="#42" />
+    </div>
+    <div class="config-field">
+      <label for="cfg-branch">Branch</label>
+      <input id="cfg-branch" type="text" placeholder="feature/my-pr" />
+    </div>
+    <div class="config-field">
+      <label for="cfg-author">Author</label>
+      <input id="cfg-author" type="text" placeholder="username" />
+    </div>
+    <div class="config-field config-field-wide">
+      <label for="cfg-root">Repo Path <span class="config-hint">(local folder to scan, use <code>.</code> for this repo)</span></label>
+      <input id="cfg-root" type="text" placeholder="." value="." />
+    </div>
+    <div class="config-actions">
+      <span id="config-error" class="config-error" style="display:none"></span>
+      <button type="submit" class="btn btn-primary" id="btn-run">▶ Run Review</button>
+    </div>
+  </form>
+</div>
 
 <main class="page">
 
@@ -196,6 +231,6 @@
   </article>
 </template>
 
-<script src="/static/dashboard.js"></script>
+<script src="/static/dashboard.js?v=4"></script>
 </body>
 </html>
