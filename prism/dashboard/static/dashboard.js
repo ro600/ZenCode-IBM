@@ -112,11 +112,12 @@ function renderOverview(data) {
   setBadge("ov-risk",   data.overall_risk);
   setText("ov-total", String(data.total_findings ?? "—"));
 
-  // Pre-fill config inputs with current values
-  document.getElementById("cfg-repo").value   = data.pr?.repository  || "";
-  document.getElementById("cfg-pr").value     = data.pr?.pull_request || "";
-  document.getElementById("cfg-branch").value = data.pr?.branch       || "";
-  document.getElementById("cfg-author").value = data.pr?.author       || "";
+  // Pre-fill config inputs with current values (guard against null in case bar not yet in DOM)
+  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  setVal("cfg-repo",   data.pr?.repository  || "");
+  setVal("cfg-pr",     data.pr?.pull_request || "");
+  setVal("cfg-branch", data.pr?.branch       || "");
+  setVal("cfg-author", data.pr?.author       || "");
 }
 
 /* ── Finding Summary tiles ─────────────────────────────────────── */

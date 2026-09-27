@@ -62,6 +62,9 @@ def create_app(
         template_folder=str(TEMPLATE_DIR),
         static_folder=str(STATIC_DIR),
     )
+    # Always read templates from disk — prevents stale cached HTML after restarts
+    app.config["TEMPLATES_AUTO_RELOAD"] = True
+    app.jinja_env.auto_reload = True
 
     repo_root = Path(repo_root).resolve()
     _pr = pr_metadata or PRMetadata()
