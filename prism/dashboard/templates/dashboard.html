@@ -4,70 +4,60 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PRISM — PR Review Dashboard</title>
-  <link rel="stylesheet" href="/static/dashboard.css?v=2" />
+  <link rel="stylesheet" href="/static/dashboard.css?v=3" />
 </head>
 <body>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<!--  SETUP SCREEN (shown first, hidden after config submitted)      -->
-<!-- ═══════════════════════════════════════════════════════════════ -->
-<div id="setup-screen">
-  <div class="setup-box">
-    <div class="setup-brand">
-      <span class="logo">◈</span>
-      <span class="brand-name">PRISM</span>
-      <span class="brand-sub">PR Intelligent Security Monitor</span>
-    </div>
-    <h2 class="setup-title">Configure Review</h2>
-    <p class="setup-hint">Fill in the PR details and point PRISM at the local checkout you want to analyse.</p>
-    <form id="setup-form" autocomplete="off">
-      <div class="field-group">
-        <label for="cfg-repo">Repository <span class="field-hint">(e.g. org/repo)</span></label>
-        <input id="cfg-repo" type="text" placeholder="ro600/ZenCode-IBM" />
-      </div>
-      <div class="field-group">
-        <label for="cfg-pr">Pull Request <span class="field-hint">(e.g. #42)</span></label>
-        <input id="cfg-pr" type="text" placeholder="#42" />
-      </div>
-      <div class="field-group">
-        <label for="cfg-branch">Branch</label>
-        <input id="cfg-branch" type="text" placeholder="feature/my-pr" />
-      </div>
-      <div class="field-group">
-        <label for="cfg-author">Author</label>
-        <input id="cfg-author" type="text" placeholder="github-username" />
-      </div>
-      <div class="field-group">
-        <label for="cfg-root">
-          Repo Root Path
-          <span class="field-hint">(local path to the checkout — use <code>.</code> for this repo)</span>
-        </label>
-        <input id="cfg-root" type="text" placeholder="." value="." />
-      </div>
-      <div id="setup-error" class="setup-error" style="display:none"></div>
-      <button type="submit" class="btn btn-primary" id="btn-start">▶ Start Review</button>
-    </form>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════ -->
 <!--  HEADER                                                         -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<header class="header" id="main-header" style="display:none">
+<header class="header">
   <div class="header-inner">
     <div class="header-brand">
       <span class="logo">◈</span>
       <span class="brand-name">PRISM</span>
       <span class="brand-sub">PR Intelligent Security Monitor</span>
     </div>
-    <div style="display:flex;gap:.5rem">
-      <button id="btn-reconfigure" class="btn btn-outline">⚙ Reconfigure</button>
+    <div style="display:flex;gap:.5rem;align-items:center">
+      <button id="btn-config" class="btn btn-outline">⚙ Configure</button>
       <button id="btn-refresh" class="btn btn-outline">↻ Refresh</button>
     </div>
   </div>
 </header>
 
-<main class="page" id="main-content" style="display:none">
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  CONFIG BAR (collapsed by default, toggled by ⚙ Configure)     -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="config-bar" class="config-bar" style="display:none">
+  <form id="config-form" class="config-form" autocomplete="off">
+    <div class="config-field">
+      <label for="cfg-repo">Repository</label>
+      <input id="cfg-repo" type="text" placeholder="org/repo" />
+    </div>
+    <div class="config-field">
+      <label for="cfg-pr">Pull Request</label>
+      <input id="cfg-pr" type="text" placeholder="#42" />
+    </div>
+    <div class="config-field">
+      <label for="cfg-branch">Branch</label>
+      <input id="cfg-branch" type="text" placeholder="feature/my-pr" />
+    </div>
+    <div class="config-field">
+      <label for="cfg-author">Author</label>
+      <input id="cfg-author" type="text" placeholder="username" />
+    </div>
+    <div class="config-field config-field-wide">
+      <label for="cfg-root">Repo Path <span class="config-hint">(local folder to scan, use <code>.</code> for this repo)</span></label>
+      <input id="cfg-root" type="text" placeholder="." value="." />
+    </div>
+    <div class="config-actions">
+      <span id="config-error" class="config-error" style="display:none"></span>
+      <button type="submit" class="btn btn-primary" id="btn-run">▶ Run Review</button>
+    </div>
+  </form>
+</div>
+
+<main class="page">
 
   <!-- ─────────────────────────────────────────────────────────── -->
   <!--  PR OVERVIEW                                                 -->
@@ -241,6 +231,6 @@
   </article>
 </template>
 
-<script src="/static/dashboard.js?v=2"></script>
+<script src="/static/dashboard.js?v=3"></script>
 </body>
 </html>

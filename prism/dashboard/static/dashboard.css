@@ -324,103 +324,84 @@ body {
 .result-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
 .result-value { font-size: 1.3rem; font-weight: 700; }
 
-/* ── Setup / config screen ───────────────────────────────────── */
-#setup-screen {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1rem;
-}
-
-.setup-box {
+/* ── Config bar ──────────────────────────────────────────────── */
+.config-bar {
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 2.5rem 2rem;
-  width: 100%;
-  max-width: 480px;
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 1.5rem;
 }
 
-.setup-brand {
+.config-form {
+  max-width: 1200px;
+  margin: 0 auto;
   display: flex;
-  align-items: center;
-  gap: .6rem;
-  margin-bottom: 1.75rem;
+  flex-wrap: wrap;
+  gap: .75rem;
+  align-items: flex-end;
 }
 
-.setup-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin-bottom: .4rem;
-}
-
-.setup-hint {
-  font-size: .84rem;
-  color: var(--muted);
-  margin-bottom: 1.5rem;
-  line-height: 1.5;
-}
-
-.field-group {
+.config-field {
   display: flex;
   flex-direction: column;
-  gap: .3rem;
-  margin-bottom: 1rem;
+  gap: .25rem;
+  flex: 1 1 140px;
 }
 
-.field-group label {
-  font-size: .78rem;
+.config-field-wide { flex: 2 1 240px; }
+
+.config-field label {
+  font-size: .72rem;
   font-weight: 600;
-  color: var(--text);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
 }
 
-.field-hint {
+.config-hint {
   font-weight: 400;
   color: var(--muted);
-  font-size: .74rem;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: .7rem;
 }
 
-.field-group input {
+.config-field input {
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text);
-  font-size: .88rem;
-  padding: .5rem .75rem;
+  font-size: .85rem;
+  padding: .4rem .65rem;
   outline: none;
   transition: border-color .15s;
   width: 100%;
 }
+.config-field input:focus { border-color: var(--accent); }
+.config-field input::placeholder { color: var(--muted); opacity: .6; }
 
-.field-group input:focus { border-color: var(--accent); }
-.field-group input::placeholder { color: var(--muted); opacity: .7; }
-
-.field-group code {
+.config-field code {
   background: var(--surface2);
   border-radius: 3px;
-  font-size: .78rem;
+  font-size: .74rem;
   padding: .05rem .3rem;
 }
 
-.setup-error {
-  background: #450a0a;
-  border: 1px solid var(--c-rejected);
-  border-radius: 5px;
-  color: #fca5a5;
-  font-size: .82rem;
-  margin-bottom: .75rem;
-  padding: .5rem .75rem;
+.config-actions {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-shrink: 0;
+  padding-bottom: 1px;
 }
+
+.config-error { color: #fca5a5; font-size: .8rem; }
 
 .btn-primary {
   background: var(--accent);
   color: #fff;
-  width: 100%;
-  padding: .55rem;
-  font-size: .9rem;
-  margin-top: .25rem;
+  padding: .42rem 1.1rem;
+  font-size: .85rem;
+  white-space: nowrap;
 }
 .btn-primary:hover { background: #4f46e5; }
 .btn-primary:disabled { opacity: .5; cursor: not-allowed; }

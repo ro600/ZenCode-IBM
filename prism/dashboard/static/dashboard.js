@@ -1,7 +1,5 @@
 /**
  * PRISM Dashboard — Frontend JS
- * Aaryan / aaryan
- *
  * Communicates with the Flask backend via /api/* endpoints.
  * All state is sourced from the backend — nothing is hardcoded here.
  */
@@ -9,13 +7,14 @@
 /* ================================================================
    State
 ================================================================ */
-let _state = null;   // last full DashboardState from /api/state
+let _state = null;
 
 /* ================================================================
    Boot
 ================================================================ */
 document.addEventListener("DOMContentLoaded", () => {
-  bindSetupForm();
+  loadState();
+  bindConfigBar();
   bindFilterListeners();
 
   document.getElementById("btn-refresh").addEventListener("click", () => {
@@ -25,23 +24,28 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(data => { _state = data; render(data); })
       .catch(err => showError(err));
   });
-
-  document.getElementById("btn-reconfigure").addEventListener("click", () => {
-    showSetup();
-  });
 });
 
 /* ================================================================
-   Setup form
+   Config bar
 ================================================================ */
-function bindSetupForm() {
-  document.getElementById("setup-form").addEventListener("submit", e => {
+function bindConfigBar() {
+  // Toggle open/close
+  document.getElementById("btn-config").addEventListener("click", () => {
+    const bar = document.getElementById("config-bar");
+    const open = bar.style.display !== "none";
+    bar.style.display = open ? "none" : "block";
+    document.getElementById("btn-config").textContent = open ? "⚙ Configure" : "✕ Close";
+  });
+
+  // Submit — post to /api/configure, re-render
+  document.getElementById("config-form").addEventListener("submit", e => {
     e.preventDefault();
-    const btn = document.getElementById("btn-start");
-    const errEl = document.getElementById("setup-error");
+    const btn    = document.getElementById("btn-run");
+    const errEl  = document.getElementById("config-error");
     errEl.style.display = "none";
     btn.disabled = true;
-    btn.textContent = "Running review…";
+    btn.textContent = "Running…";
 
     const payload = {
       repository:   document.getElementById("cfg-repo").value.trim(),
@@ -62,33 +66,20 @@ function bindSetupForm() {
       })
       .then(data => {
         _state = data;
-        showDashboard();
         render(data);
+        // Collapse the bar after a successful run
+        document.getElementById("config-bar").style.display = "none";
+        document.getElementById("btn-config").textContent = "⚙ Configure";
       })
       .catch(err => {
-        errEl.textContent = err.message;
-        errEl.style.display = "block";
+        errEl.textContent = "Error: " + err.message;
+        errEl.style.display = "inline";
+      })
+      .finally(() => {
         btn.disabled = false;
-        btn.textContent = "▶ Start Review";
+        btn.textContent = "▶ Run Review";
       });
   });
-}
-
-function showSetup() {
-  document.getElementById("setup-screen").style.display = "flex";
-  document.getElementById("main-header").style.display  = "none";
-  document.getElementById("main-content").style.display = "none";
-  // reset button
-  const btn = document.getElementById("btn-start");
-  btn.disabled = false;
-  btn.textContent = "▶ Start Review";
-  document.getElementById("setup-error").style.display = "none";
-}
-
-function showDashboard() {
-  document.getElementById("setup-screen").style.display  = "none";
-  document.getElementById("main-header").style.display   = "block";
-  document.getElementById("main-content").style.display  = "flex";
 }
 
 /* ================================================================
@@ -120,6 +111,12 @@ function renderOverview(data) {
   setBadge("ov-status", data.review_status);
   setBadge("ov-risk",   data.overall_risk);
   setText("ov-total", String(data.total_findings ?? "—"));
+
+  // Pre-fill config inputs with current values
+  document.getElementById("cfg-repo").value   = data.pr?.repository  || "";
+  document.getElementById("cfg-pr").value     = data.pr?.pull_request || "";
+  document.getElementById("cfg-branch").value = data.pr?.branch       || "";
+  document.getElementById("cfg-author").value = data.pr?.author       || "";
 }
 
 /* ── Finding Summary tiles ─────────────────────────────────────── */
@@ -167,13 +164,11 @@ function renderFindings(findings) {
     setBadgeEl(card.querySelector(".finding-severity"), f.severity);
     setBadgeEl(card.querySelector(".finding-status"),   f.status);
 
-    // Meta rows — only show if value is present
     setMetaRow(card, "file",         f.file);
     setMetaRow(card, "line",         f.line != null ? String(f.line) : null);
     setMetaRow(card, "evidence",     f.evidence);
     setMetaRow(card, "suggested_fix",f.suggested_fix);
 
-    // Action buttons
     card.querySelector(".btn-approve").addEventListener("click", () => {
       apiFindingAction(f.id, "approve", card);
     });
@@ -207,16 +202,12 @@ function apiFindingAction(findingId, action, cardEl) {
       return r.json();
     })
     .then(data => {
-      // Update card status in-place without a full re-render
       cardEl.dataset.status = data.status;
       const statusBadge = cardEl.querySelector(".finding-status");
       setBadgeEl(statusBadge, data.status);
-
-      // Also patch the local _state so filters stay correct
       if (_state) {
         const f = (_state.findings || []).find(f => f.id === findingId);
         if (f) f.status = data.status;
-        // Refresh overview counts
         refreshOverviewFromState();
       }
     })
@@ -225,24 +216,22 @@ function apiFindingAction(findingId, action, cardEl) {
 
 function refreshOverviewFromState() {
   if (!_state) return;
-  // Recompute open count for the "findings after" display
-  const openCount = (_state.findings || []).filter(f => f.status === "open").length;
+  const openCount  = (_state.findings || []).filter(f => f.status === "open").length;
   const fixedCount = (_state.findings || [])
     .filter(f => f.status === "approved" || f.status === "fixed").length;
-  setText("res-after",  String(openCount));
-  setText("res-fixes",  String(fixedCount));
+  setText("res-after", String(openCount));
+  setText("res-fixes", String(fixedCount));
 
-  // Recompute review_status badge approximation
-  const findings = _state.findings || [];
+  const findings   = _state.findings || [];
   const hasBlocked = findings.some(f => f.requires_human_approval && f.status === "open");
   const allDone    = findings.every(f => f.status !== "open");
   const anyDone    = findings.some( f => f.status !== "open");
   let newStatus = "pending";
-  if (hasBlocked)  newStatus = "blocked";
+  if (hasBlocked)   newStatus = "blocked";
   else if (allDone) newStatus = "complete";
   else if (anyDone) newStatus = "in_progress";
-  setBadge("ov-status", newStatus);
-  setBadge("res-pr-status", newStatus);
+  setBadge("ov-status",    newStatus);
+  setBadge("res-pr-status",newStatus);
 }
 
 /* ================================================================
@@ -272,7 +261,6 @@ function setBadge(id, value) {
 
 function setBadgeEl(el, value) {
   if (!el || !value) return;
-  // Remove any existing badge-* class
   el.className = el.className.replace(/badge-\S+/g, "").trim();
   el.classList.add("badge", `badge-${value.replace(/\s+/g, "_")}`);
   el.textContent = value.replace(/_/g, " ");
@@ -281,18 +269,13 @@ function setBadgeEl(el, value) {
 function setMetaRow(card, key, value) {
   const row = card.querySelector(`.meta-row[data-key="${key}"]`);
   if (!row) return;
-  if (value == null || value === "") {
-    row.classList.remove("visible");
-    return;
-  }
+  if (value == null || value === "") { row.classList.remove("visible"); return; }
   row.classList.add("visible");
   const dd = row.querySelector("dd");
   if (dd) dd.textContent = value;
 }
 
-function nullish(v) {
-  return v == null ? "—" : String(v);
-}
+function nullish(v) { return v == null ? "—" : String(v); }
 
 function showLoadingMsg() {
   const list = document.getElementById("findings-list");
