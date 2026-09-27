@@ -21,7 +21,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from flask import Flask, jsonify, render_template, abort
+from flask import Flask, jsonify, render_template, abort, request
 
 from prism.dashboard.aggregator import Aggregator, DashboardState, PRMetadata
 from prism.models import Finding, FindingStatus, Category, Severity
@@ -67,11 +67,13 @@ def create_app(
     _pr = pr_metadata or PRMetadata()
 
     # In-memory state — rebuilt on demand or on startup
-    _state: dict[str, Any] = {"dashboard": None}
+    _state: dict[str, Any] = {"dashboard": None, "repo_root": repo_root, "pr": _pr}
 
     def _build_state() -> DashboardState:
         from prism.models import ReviewResult
-        agg = Aggregator(pr=_pr)
+        current_pr   = _state["pr"]
+        current_root = _state["repo_root"]
+        agg = Aggregator(pr=current_pr)
 
         # Run all four agents and wrap their findings into ReviewResult objects
         for agent_name, scan_fn in [
@@ -80,7 +82,7 @@ def create_app(
             ("TestAgent", test_scan),
             ("DocAgent",  doc_scan),
         ]:
-            raw = scan_fn(repo_root)
+            raw = scan_fn(current_root)
             result = ReviewResult(reviewer=agent_name)
             for f in raw:
                 # Map agent Finding -> prism Finding
@@ -148,6 +150,29 @@ def create_app(
     # ---------------------------------------------------------------- #
     # API — finding actions                                              #
     # ---------------------------------------------------------------- #
+
+    # ---------------------------------------------------------------- #
+    # API — configure                                                    #
+    # ---------------------------------------------------------------- #
+
+    @app.route("/api/configure", methods=["POST"])
+    def api_configure():
+        """Accept new PR config from the setup form and rebuild state."""
+        body = request.get_json(force=True, silent=True) or {}
+        new_root = Path(body.get("repo_root", ".")).resolve()
+        if not new_root.is_dir():
+            return jsonify({"error": f"Path not found: {new_root}"}), 400
+
+        _state["repo_root"] = new_root
+        _state["pr"] = PRMetadata(
+            repository=body.get("repository", ""),
+            pull_request=body.get("pull_request", ""),
+            branch=body.get("branch", ""),
+            author=body.get("author", ""),
+        )
+        _state["dashboard"] = None   # force rebuild on next request
+        state = _build_state()
+        return jsonify(state.to_dict())
 
     @app.route("/api/findings/<finding_id>/approve", methods=["POST"])
     def api_approve(finding_id: str):

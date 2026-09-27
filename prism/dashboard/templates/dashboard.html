@@ -9,20 +9,65 @@
 <body>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  SETUP SCREEN (shown first, hidden after config submitted)      -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="setup-screen">
+  <div class="setup-box">
+    <div class="setup-brand">
+      <span class="logo">◈</span>
+      <span class="brand-name">PRISM</span>
+      <span class="brand-sub">PR Intelligent Security Monitor</span>
+    </div>
+    <h2 class="setup-title">Configure Review</h2>
+    <p class="setup-hint">Fill in the PR details and point PRISM at the local checkout you want to analyse.</p>
+    <form id="setup-form" autocomplete="off">
+      <div class="field-group">
+        <label for="cfg-repo">Repository <span class="field-hint">(e.g. org/repo)</span></label>
+        <input id="cfg-repo" type="text" placeholder="ro600/ZenCode-IBM" />
+      </div>
+      <div class="field-group">
+        <label for="cfg-pr">Pull Request <span class="field-hint">(e.g. #42)</span></label>
+        <input id="cfg-pr" type="text" placeholder="#42" />
+      </div>
+      <div class="field-group">
+        <label for="cfg-branch">Branch</label>
+        <input id="cfg-branch" type="text" placeholder="feature/my-pr" />
+      </div>
+      <div class="field-group">
+        <label for="cfg-author">Author</label>
+        <input id="cfg-author" type="text" placeholder="github-username" />
+      </div>
+      <div class="field-group">
+        <label for="cfg-root">
+          Repo Root Path
+          <span class="field-hint">(local path to the checkout — use <code>.</code> for this repo)</span>
+        </label>
+        <input id="cfg-root" type="text" placeholder="." value="." />
+      </div>
+      <div id="setup-error" class="setup-error" style="display:none"></div>
+      <button type="submit" class="btn btn-primary" id="btn-start">▶ Start Review</button>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
 <!--  HEADER                                                         -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<header class="header">
+<header class="header" id="main-header" style="display:none">
   <div class="header-inner">
     <div class="header-brand">
       <span class="logo">◈</span>
       <span class="brand-name">PRISM</span>
       <span class="brand-sub">PR Intelligent Security Monitor</span>
     </div>
-    <button id="btn-refresh" class="btn btn-outline">↻ Refresh</button>
+    <div style="display:flex;gap:.5rem">
+      <button id="btn-reconfigure" class="btn btn-outline">⚙ Reconfigure</button>
+      <button id="btn-refresh" class="btn btn-outline">↻ Refresh</button>
+    </div>
   </div>
 </header>
 
-<main class="page">
+<main class="page" id="main-content" style="display:none">
 
   <!-- ─────────────────────────────────────────────────────────── -->
   <!--  PR OVERVIEW                                                 -->

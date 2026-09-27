@@ -323,3 +323,105 @@ body {
 .result-item-wide { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; }
 .result-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
 .result-value { font-size: 1.3rem; font-weight: 700; }
+
+/* ── Setup / config screen ───────────────────────────────────── */
+#setup-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.setup-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 2.5rem 2rem;
+  width: 100%;
+  max-width: 480px;
+}
+
+.setup-brand {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin-bottom: 1.75rem;
+}
+
+.setup-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: .4rem;
+}
+
+.setup-hint {
+  font-size: .84rem;
+  color: var(--muted);
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+  margin-bottom: 1rem;
+}
+
+.field-group label {
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.field-hint {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: .74rem;
+}
+
+.field-group input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: .88rem;
+  padding: .5rem .75rem;
+  outline: none;
+  transition: border-color .15s;
+  width: 100%;
+}
+
+.field-group input:focus { border-color: var(--accent); }
+.field-group input::placeholder { color: var(--muted); opacity: .7; }
+
+.field-group code {
+  background: var(--surface2);
+  border-radius: 3px;
+  font-size: .78rem;
+  padding: .05rem .3rem;
+}
+
+.setup-error {
+  background: #450a0a;
+  border: 1px solid var(--c-rejected);
+  border-radius: 5px;
+  color: #fca5a5;
+  font-size: .82rem;
+  margin-bottom: .75rem;
+  padding: .5rem .75rem;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  width: 100%;
+  padding: .55rem;
+  font-size: .9rem;
+  margin-top: .25rem;
+}
+.btn-primary:hover { background: #4f46e5; }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+

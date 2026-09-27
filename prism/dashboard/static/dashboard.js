@@ -15,8 +15,9 @@ let _state = null;   // last full DashboardState from /api/state
    Boot
 ================================================================ */
 document.addEventListener("DOMContentLoaded", () => {
-  loadState();
+  bindSetupForm();
   bindFilterListeners();
+
   document.getElementById("btn-refresh").addEventListener("click", () => {
     showLoadingMsg();
     fetch("/api/refresh", { method: "POST" })
@@ -24,7 +25,71 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(data => { _state = data; render(data); })
       .catch(err => showError(err));
   });
+
+  document.getElementById("btn-reconfigure").addEventListener("click", () => {
+    showSetup();
+  });
 });
+
+/* ================================================================
+   Setup form
+================================================================ */
+function bindSetupForm() {
+  document.getElementById("setup-form").addEventListener("submit", e => {
+    e.preventDefault();
+    const btn = document.getElementById("btn-start");
+    const errEl = document.getElementById("setup-error");
+    errEl.style.display = "none";
+    btn.disabled = true;
+    btn.textContent = "Running review…";
+
+    const payload = {
+      repository:   document.getElementById("cfg-repo").value.trim(),
+      pull_request: document.getElementById("cfg-pr").value.trim(),
+      branch:       document.getElementById("cfg-branch").value.trim(),
+      author:       document.getElementById("cfg-author").value.trim(),
+      repo_root:    document.getElementById("cfg-root").value.trim() || ".",
+    };
+
+    fetch("/api/configure", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(r => {
+        if (!r.ok) return r.json().then(d => { throw new Error(d.error || `HTTP ${r.status}`); });
+        return r.json();
+      })
+      .then(data => {
+        _state = data;
+        showDashboard();
+        render(data);
+      })
+      .catch(err => {
+        errEl.textContent = err.message;
+        errEl.style.display = "block";
+        btn.disabled = false;
+        btn.textContent = "▶ Start Review";
+      });
+  });
+}
+
+function showSetup() {
+  document.getElementById("setup-screen").style.display = "flex";
+  document.getElementById("main-header").style.display  = "none";
+  document.getElementById("main-content").style.display = "none";
+  // reset button
+  const btn = document.getElementById("btn-start");
+  btn.disabled = false;
+  btn.textContent = "▶ Start Review";
+  document.getElementById("setup-error").style.display = "none";
+}
+
+function showDashboard() {
+  document.getElementById("setup-screen").style.display  = "none";
+  document.getElementById("main-header").style.display   = "block";
+  document.getElementById("main-content").style.display  = "flex";
+}
 
 /* ================================================================
    Data loading
