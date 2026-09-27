@@ -85,6 +85,10 @@ def test_create_transaction(client):
 # BUG-1 — Transfer allows negative balance (DOCUMENTED BROKEN BASELINE)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.xfail(
+    reason="BUG-1 is fixed: balance check now rejects overdraft transfers (expected failure in fixed codebase)",
+    strict=True,
+)
 def test_transfer_allows_negative_balance_bug(client):
     """
     BASELINE BUG-1: Transfer should fail when sender has insufficient balance,

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PreVise — PR Review Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/dashboard.css?v=5" />
+</head>
+<body>
+
+<!-- ═══════════════════════════ HEADER ═══════════════════════════ -->
+<header class="header">
+  <div class="header-inner">
+    <div class="header-brand">
+      <svg class="logo-mark" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="32" rx="8" fill="#6366f1" fill-opacity="0.15"/>
+        <path d="M8 24L16 8L24 24" stroke="#6366f1" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M11 19H21" stroke="#6366f1" stroke-width="2.2" stroke-linecap="round"/>
+        <circle cx="16" cy="8" r="2" fill="#a5b4fc"/>
+      </svg>
+      <div class="brand-text">
+        <span class="brand-name">PreVise</span>
+        <span class="brand-tag">AI · PR Review</span>
+      </div>
+    </div>
+    <nav class="header-nav">
+      <span class="nav-item active" data-section="overview">Overview</span>
+      <span class="nav-item" data-section="findings">Findings</span>
+      <span class="nav-item" data-section="results">Results</span>
+    </nav>
+    <div class="header-actions">
+      <button id="btn-config" class="btn btn-ghost">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/><path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/></svg>
+        Configure
+      </button>
+      <button id="btn-refresh" class="btn btn-primary">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════ CONFIG PANEL ═════════════════════ -->
+<div id="config-bar" class="config-panel" style="display:none">
+  <div class="config-inner">
+    <div class="config-title">Configure Review Target</div>
+    <form id="config-form" class="config-form" autocomplete="off">
+      <div class="config-field">
+        <label for="cfg-repo">Repository</label>
+        <input id="cfg-repo" type="text" placeholder="org/repo" />
+      </div>
+      <div class="config-field">
+        <label for="cfg-pr">Pull Request</label>
+        <input id="cfg-pr" type="text" placeholder="#42" />
+      </div>
+      <div class="config-field">
+        <label for="cfg-branch">Branch</label>
+        <input id="cfg-branch" type="text" placeholder="feature/my-pr" />
+      </div>
+      <div class="config-field">
+        <label for="cfg-author">Author</label>
+        <input id="cfg-author" type="text" placeholder="username" />
+      </div>
+      <div class="config-field config-field-wide">
+        <label for="cfg-root">Local path to scan <code>.</code> = this repo</label>
+        <input id="cfg-root" type="text" placeholder="." value="." />
+      </div>
+      <div class="config-actions">
+        <span id="config-error" class="config-error" style="display:none"></span>
+        <button type="button" id="btn-close-config" class="btn btn-ghost">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-run">▶ Run Review</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<main class="page">
+
+  <!-- ─────────────── HERO STRIP ─────────────────────────────── -->
+  <section class="hero-strip" id="section-overview">
+    <div class="hero-left">
+      <div class="hero-label">PREVISE · REVIEW PIPELINE</div>
+      <h1 class="hero-title">Predictive<br><span class="hero-accent">Code Intelligence</span></h1>
+      <p class="hero-sub">Multi-agent security, logic, testing &amp; documentation review — all in one scan.</p>
+      <div class="hero-meta">
+        <div class="hero-meta-item">
+          <span class="hm-label">Scanning</span>
+          <span class="hm-value" id="ov-repo-root">.</span>
+        </div>
+        <div class="hero-meta-sep"></div>
+        <div class="hero-meta-item">
+          <span class="hm-label">Repository</span>
+          <span class="hm-value" id="ov-repository">—</span>
+        </div>
+        <div class="hero-meta-sep"></div>
+        <div class="hero-meta-item">
+          <span class="hm-label">PR</span>
+          <span class="hm-value" id="ov-pull-request">—</span>
+        </div>
+        <div class="hero-meta-sep"></div>
+        <div class="hero-meta-item">
+          <span class="hm-label">Branch</span>
+          <span class="hm-value" id="ov-branch">—</span>
+        </div>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="status-ring-wrap">
+        <div class="status-ring">
+          <div class="ring-inner">
+            <span class="ring-count" id="ov-total">—</span>
+            <span class="ring-label">Findings</span>
+          </div>
+        </div>
+        <div class="status-badges">
+          <span class="badge" id="ov-status">—</span>
+          <span class="badge" id="ov-risk">—</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── SUMMARY TILES ──────────────────────────── -->
+  <section class="summary-row">
+    <div class="summary-tile tile-security">
+      <div class="tile-icon">🔐</div>
+      <div class="tile-body">
+        <span class="tile-count" id="sum-security">0</span>
+        <span class="tile-label">Security</span>
+      </div>
+      <div class="tile-rule-tag">S-01 → S-05</div>
+    </div>
+    <div class="summary-tile tile-bug">
+      <div class="tile-icon">⚡</div>
+      <div class="tile-body">
+        <span class="tile-count" id="sum-bugs">0</span>
+        <span class="tile-label">Logic Bugs</span>
+      </div>
+      <div class="tile-rule-tag">L-01 → L-04</div>
+    </div>
+    <div class="summary-tile tile-testing">
+      <div class="tile-icon">🧪</div>
+      <div class="tile-body">
+        <span class="tile-count" id="sum-testing">0</span>
+        <span class="tile-label">Testing</span>
+      </div>
+      <div class="tile-rule-tag">T-01 → T-06</div>
+    </div>
+    <div class="summary-tile tile-docs">
+      <div class="tile-icon">📄</div>
+      <div class="tile-body">
+        <span class="tile-count" id="sum-docs">0</span>
+        <span class="tile-label">Docs</span>
+      </div>
+      <div class="tile-rule-tag">D-01 → D-06</div>
+    </div>
+  </section>
+
+  <!-- ─────────────── FINDINGS ───────────────────────────────── -->
+  <section class="panel" id="section-findings">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="panel-title-dot"></span>
+        Findings
+      </div>
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label>Category</label>
+          <select id="filter-category">
+            <option value="all">All</option>
+            <option value="bug">Bug</option>
+            <option value="security">Security</option>
+            <option value="testing">Testing</option>
+            <option value="documentation">Docs</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Severity</label>
+          <select id="filter-severity">
+            <option value="all">All</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+            <option value="info">Info</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Status</label>
+          <select id="filter-status">
+            <option value="all">All</option>
+            <option value="open">Open</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="fixed">Fixed</option>
+            <option value="pending_review">Pending Review</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div id="findings-list" class="findings-list">
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <span>Running agents…</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── FINAL RESULTS ──────────────────────────── -->
+  <section class="panel" id="section-results">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="panel-title-dot dot-green"></span>
+        Final Results
+      </div>
+    </div>
+    <div class="results-grid">
+      <div class="result-card">
+        <span class="result-value" id="res-before">—</span>
+        <span class="result-label">Findings Before</span>
+      </div>
+      <div class="result-card">
+        <span class="result-value" id="res-after">—</span>
+        <span class="result-label">Findings After</span>
+      </div>
+      <div class="result-card result-card-accent">
+        <span class="result-value" id="res-fixes">—</span>
+        <span class="result-label">Fixes Applied</span>
+      </div>
+      <div class="result-card">
+        <span class="result-value" id="res-tests-gen">—</span>
+        <span class="result-label">Tests Generated</span>
+      </div>
+      <div class="result-card">
+        <span class="result-value result-pass" id="res-tests-pass">—</span>
+        <span class="result-label">Tests Passed</span>
+      </div>
+      <div class="result-card">
+        <span class="result-value result-fail" id="res-tests-fail">—</span>
+        <span class="result-label">Tests Failed</span>
+      </div>
+    </div>
+    <div class="pr-status-bar">
+      <span class="pr-status-label">Final PR Status</span>
+      <span class="badge badge-lg" id="res-pr-status">—</span>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <span>PreVise · Predictive Visual Security Engine</span>
+  <span class="footer-sep">·</span>
+  <span>Built on IBM Bob</span>
+</footer>
+
+<!-- ═══════════════════ FINDING CARD TEMPLATE ═══════════════════ -->
+<template id="tpl-finding">
+  <article class="finding-card">
+    <div class="finding-head">
+      <div class="finding-badges">
+        <span class="finding-severity badge"></span>
+        <span class="finding-category badge"></span>
+        <span class="human-badge">👁 Human Review Required</span>
+      </div>
+      <div class="finding-meta-right">
+        <span class="finding-id"></span>
+        <span class="finding-status badge"></span>
+      </div>
+    </div>
+    <h3 class="finding-title"></h3>
+    <div class="finding-location">
+      <span class="loc-file finding-file"></span>
+      <span class="loc-line">line <span class="finding-line"></span></span>
+    </div>
+    <div class="finding-evidence-block" data-key="evidence">
+      <div class="evidence-label">Evidence</div>
+      <code class="finding-evidence"></code>
+    </div>
+    <div class="finding-fix-block" data-key="suggested_fix">
+      <div class="fix-label">→ Suggested Fix</div>
+      <p class="finding-fix"></p>
+    </div>
+    <div class="finding-actions">
+      <button class="btn btn-approve" data-action="approve">✓ Approve Fix</button>
+      <button class="btn btn-reject"  data-action="reject">✕ Reject</button>
+    </div>
+  </article>
+</template>
+
+<script src="/static/dashboard.js?v=5"></script>
+</body>
+</html>
