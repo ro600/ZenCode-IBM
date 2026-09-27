@@ -87,8 +87,13 @@ def _check_sql_injection(path: Path, source_lines: list[str]) -> list[Finding]:
     findings: list[Finding] = []
     for i, line in enumerate(source_lines, 1):
         stripped = line.strip()
-        # Detect f-string SQL with user-controlled variable interpolation
-        if re.search(r'text\(f["\']', stripped) or re.search(r'execute\(f["\']', stripped):
+        # Detect f-string SQL with user-controlled variable interpolation:
+        # covers text(f"..."), execute(f"..."), and bare f"SELECT/INSERT/UPDATE/DELETE..."
+        if (
+            re.search(r'text\(f["\']', stripped)
+            or re.search(r'execute\(f["\']', stripped)
+            or re.search(r'f["\'].*\b(SELECT|INSERT|UPDATE|DELETE|WHERE)\b.*\{', stripped, re.IGNORECASE)
+        ):
             findings.append(
                 Finding(
                     agent="Sentinel",
@@ -108,7 +113,7 @@ def _check_plain_text_password(path: Path, source_lines: list[str]) -> list[Find
     findings: list[Finding] = []
     for i, line in enumerate(source_lines, 1):
         stripped = line.strip()
-        # password stored without hashing
+        # password stored without hashing — direct attribute assignment
         if re.search(r'password\s*=\s*\w+\.password\b', stripped, re.IGNORECASE):
             findings.append(
                 Finding(
@@ -122,8 +127,24 @@ def _check_plain_text_password(path: Path, source_lines: list[str]) -> list[Find
                     fix_hint="Use passlib: hashed = pwd_context.hash(password)",
                 )
             )
+        # password stored in dict literal without hashing: {"password": <var>}
+        elif re.search(r'["\']password["\']\s*:\s*\w+\b', stripped, re.IGNORECASE) and not re.search(
+            r'hash|encrypt|bcrypt|sha|argon|scrypt|pbkdf', stripped, re.IGNORECASE
+        ):
+            findings.append(
+                Finding(
+                    agent="Sentinel",
+                    rule_id="S-03",
+                    severity="HIGH",
+                    file=str(path),
+                    line=i,
+                    message="Plain-text password stored in dict — must be hashed before storage",
+                    snippet=stripped,
+                    fix_hint="Use passlib: hashed = pwd_context.hash(password)",
+                )
+            )
         # plain-text password comparison
-        if re.search(r'\.password\s*!=\s*password\b', stripped, re.IGNORECASE):
+        elif re.search(r'\.password\s*!=\s*password\b', stripped, re.IGNORECASE):
             findings.append(
                 Finding(
                     agent="Sentinel",

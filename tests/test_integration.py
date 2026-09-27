@@ -14,46 +14,52 @@ from agents.bob_orchestrator import run_prism_workflow
 
 
 def _write_buggy_demo_repo(root: Path) -> Path:
-    app_dir = root / "demo_app"
+    # Files are placed at root/app/ so that fix_agent paths ("app/auth.py",
+    # "app/crud.py") resolve correctly when repo_root=root.
+    app_dir = root / "app"
     app_dir.mkdir()
 
-    # Sentinel fixtures: hardcoded secret, SQL injection, plaintext password,
-    # and an insecure configuration.
-    (app_dir / "security_demo.py").write_text(
-        """
-SECRET_KEY = "demo-hardcoded-secret"
-
-def find_user(user_id):
-    query = f"SELECT * FROM users WHERE id = {user_id}"
-    return query
-
-def create_user(password):
-    user_record = {"password": password}
-    return user_record
-
-DEBUG = True
-""",
+    # Sentinel + fix_agent fixtures: patterns must match both the detection
+    # regexes in agents/sentinel.py AND the exact string replacements in
+    # agents/fix_agent.py so the full scan→fix→rescan cycle works end-to-end.
+    (app_dir / "auth.py").write_text(
+        'SECRET_KEY = "super_secret_key_1234"   # noqa: S105\n'
+        "\n"
+        "def decode_access_token(token):\n"
+        "    # BUG-4: no verification of audience/issuer, exception not handled\n"
+        "    return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])\n",
         encoding="utf-8",
     )
 
-    # Logic fixtures: use the exact patterns expected by agents/logic.py.
-    # L-01 requires a function named transfer_funds and a sender.balance -= amount
-    # mutation without a preceding sender.balance < amount guard.
-    (app_dir / "logic_demo.py").write_text(
-        """
-def transfer_funds(sender, receiver, amount):
-    sender.balance -= amount
-    receiver.balance += amount
-    return True
-
-
-def calculate_ratio(value, divisor):
-    return value / divisor
-
-
-def decode_token(token):
-    return jwt.decode(token, "secret", algorithms=["HS256"])
-""",
+    (app_dir / "crud.py").write_text(
+        "from passlib.context import CryptContext\n"
+        "from app.auth import create_access_token\n"
+        "\n"
+        "def get_user_by_email(db, email):\n"
+        "    query = text(f\"SELECT * FROM users WHERE email = '{email}'\")  # noqa: S608\n"
+        "    result = db.execute(query).fetchone()\n"
+        "    return result\n"
+        "\n"
+        "def create_user(db, user_in):\n"
+        "    db_user = dict(\n"
+        "        password=user_in.password,   # BUG-2: no hashing\n"
+        "    )\n"
+        "    return db_user\n"
+        "\n"
+        "def login(db, username, password):\n"
+        "    user = get_user_by_username(db, username)\n"
+        "    if user.password != password:   # BUG-2: plain-text compare\n"
+        "        return None\n"
+        "    return create_access_token({'sub': str(user.id)})\n"
+        "\n"
+        "def transfer_funds(sender, receiver, amount):\n"
+        "    # BUG-1: missing:  if sender.balance < amount: return False\n"
+        "    sender.balance -= amount\n"
+        "    receiver.balance += amount\n"
+        "    return True\n"
+        "\n"
+        "def divide_balance(user, divisor):\n"
+        "    return user.balance / divisor   # BUG-6: ZeroDivisionError when divisor == 0\n",
         encoding="utf-8",
     )
 

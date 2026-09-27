@@ -69,6 +69,7 @@ def run_prism_workflow(
     return {
         "pre_fix_report": pre_fix_report,
         "fixes_applied": fixes_applied,
+        "approved_rule_ids": set(approved_rule_ids),
         "post_fix_report": post_fix_report,
         "regression_clean": regression_clean,
         "test_result": test_result,

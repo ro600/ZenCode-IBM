@@ -39,7 +39,8 @@ def _check_missing_balance_guard(path: Path, source_lines: list[str]) -> list[Fi
             func_start = i
         if in_transfer:
             # A real balance check looks like: sender.balance < amount  or  sender.balance >= amount
-            if re.search(r'sender\.balance\s*[<>]=?\s*amount', stripped):
+            # Skip comment lines so that BUG marker comments don't count as a guard
+            if not stripped.startswith('#') and re.search(r'sender\.balance\s*[<>]=?\s*amount', stripped):
                 has_balance_check = True
             # Detect the mutation line
             if re.search(r'sender\.balance\s*-=', stripped) and not has_balance_check:

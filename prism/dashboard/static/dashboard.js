@@ -1,48 +1,60 @@
 /**
- * PRISM Dashboard — Frontend JS
+ * PreVise Dashboard — Frontend JS v5
  * Communicates with the Flask backend via /api/* endpoints.
- * All state is sourced from the backend — nothing is hardcoded here.
  */
 
-/* ================================================================
-   State
-================================================================ */
 let _state = null;
 
-/* ================================================================
-   Boot
-================================================================ */
+/* ── Boot ───────────────────────────────────────────────────── */
 document.addEventListener("DOMContentLoaded", () => {
   loadState();
   bindConfigBar();
   bindFilterListeners();
+  bindNavItems();
 
   document.getElementById("btn-refresh").addEventListener("click", () => {
-    showLoadingMsg();
+    showLoading();
     fetch("/api/refresh", { method: "POST" })
       .then(r => r.json())
       .then(data => { _state = data; render(data); })
-      .catch(err => showError(err));
+      .catch(showError);
   });
 });
 
-/* ================================================================
-   Config bar
-================================================================ */
+/* ── Nav items (scroll-to section) ─────────────────────────── */
+function bindNavItems() {
+  document.querySelectorAll(".nav-item").forEach(item => {
+    item.addEventListener("click", () => {
+      document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+      item.classList.add("active");
+      const id = "section-" + item.dataset.section;
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+}
+
+/* ── Config panel ───────────────────────────────────────────── */
 function bindConfigBar() {
-  // Toggle open/close
-  document.getElementById("btn-config").addEventListener("click", () => {
-    const bar = document.getElementById("config-bar");
+  const bar    = document.getElementById("config-bar");
+  const btnCfg = document.getElementById("btn-config");
+  const btnClose = document.getElementById("btn-close-config");
+
+  btnCfg.addEventListener("click", () => {
     const open = bar.style.display !== "none";
     bar.style.display = open ? "none" : "block";
-    document.getElementById("btn-config").textContent = open ? "⚙ Configure" : "✕ Close";
+    btnCfg.textContent = open ? "Configure" : "✕ Close";
   });
 
-  // Submit — post to /api/configure, re-render
+  if (btnClose) btnClose.addEventListener("click", () => {
+    bar.style.display = "none";
+    btnCfg.textContent = "Configure";
+  });
+
   document.getElementById("config-form").addEventListener("submit", e => {
     e.preventDefault();
-    const btn    = document.getElementById("btn-run");
-    const errEl  = document.getElementById("config-error");
+    const btn   = document.getElementById("btn-run");
+    const errEl = document.getElementById("config-error");
     errEl.style.display = "none";
     btn.disabled = true;
     btn.textContent = "Running…";
@@ -67,9 +79,8 @@ function bindConfigBar() {
       .then(data => {
         _state = data;
         render(data);
-        // Collapse the bar after a successful run
-        document.getElementById("config-bar").style.display = "none";
-        document.getElementById("btn-config").textContent = "⚙ Configure";
+        bar.style.display = "none";
+        btnCfg.textContent = "Configure";
       })
       .catch(err => {
         errEl.textContent = "Error: " + err.message;
@@ -82,54 +93,49 @@ function bindConfigBar() {
   });
 }
 
-/* ================================================================
-   Data loading
-================================================================ */
+/* ── Load ───────────────────────────────────────────────────── */
 function loadState() {
-  showLoadingMsg();
+  showLoading();
   fetch("/api/state")
     .then(r => r.json())
     .then(data => { _state = data; render(data); })
-    .catch(err => showError(err));
+    .catch(showError);
 }
 
-/* ================================================================
-   Rendering
-================================================================ */
+/* ── Render ─────────────────────────────────────────────────── */
 function render(data) {
-  renderOverview(data);
+  renderHero(data);
   renderSummary(data.summary);
   renderFindings(data.findings);
   renderFinalResults(data.final_results);
 }
 
-/* ── PR Overview ───────────────────────────────────────────────── */
-function renderOverview(data) {
+function renderHero(data) {
+  setText("ov-repo-root",    data.repo_root || ".");
   setText("ov-repository",   data.pr?.repository  || "—");
   setText("ov-pull-request", data.pr?.pull_request || "—");
   setText("ov-branch",       data.pr?.branch       || "—");
+  setText("ov-total",        String(data.total_findings ?? "—"));
   setBadge("ov-status", data.review_status);
   setBadge("ov-risk",   data.overall_risk);
-  setText("ov-total", String(data.total_findings ?? "—"));
 
-  // Pre-fill config inputs with current values (guard against null in case bar not yet in DOM)
-  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
-  setVal("cfg-repo",   data.pr?.repository  || "");
-  setVal("cfg-pr",     data.pr?.pull_request || "");
-  setVal("cfg-branch", data.pr?.branch       || "");
-  setVal("cfg-author", data.pr?.author       || "");
+  // Pre-fill config inputs
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ""; };
+  setVal("cfg-repo",   data.pr?.repository);
+  setVal("cfg-pr",     data.pr?.pull_request);
+  setVal("cfg-branch", data.pr?.branch);
+  setVal("cfg-author", data.pr?.author);
+  setVal("cfg-root",   data.repo_root || ".");
 }
 
-/* ── Finding Summary tiles ─────────────────────────────────────── */
-function renderSummary(summary) {
-  if (!summary) return;
-  setText("sum-bugs",     String(summary.bugs     ?? 0));
-  setText("sum-security", String(summary.security ?? 0));
-  setText("sum-testing",  String(summary.testing  ?? 0));
-  setText("sum-docs",     String(summary.documentation ?? 0));
+function renderSummary(s) {
+  if (!s) return;
+  setText("sum-security", String(s.security      ?? 0));
+  setText("sum-bugs",     String(s.bugs          ?? 0));
+  setText("sum-testing",  String(s.testing       ?? 0));
+  setText("sum-docs",     String(s.documentation ?? 0));
 }
 
-/* ── Findings list ─────────────────────────────────────────────── */
 function renderFindings(findings) {
   const list = document.getElementById("findings-list");
   list.innerHTML = "";
@@ -146,98 +152,107 @@ function renderFindings(findings) {
   });
 
   if (filtered.length === 0) {
-    list.innerHTML = '<p class="loading-msg">No findings match the current filters.</p>';
+    list.innerHTML = '<p class="empty-msg">No findings match the current filters.</p>';
     return;
   }
 
   const tpl = document.getElementById("tpl-finding");
   filtered.forEach(f => {
     const card = tpl.content.cloneNode(true).querySelector(".finding-card");
-    card.dataset.id     = f.id;
-    card.dataset.status = f.status;
-    card.dataset.human  = String(!!f.requires_human_approval);
 
-    card.querySelector(".finding-id").textContent          = f.id;
-    card.querySelector(".finding-title").textContent       = f.title;
-    card.querySelector(".finding-description").textContent = f.description;
+    card.dataset.id       = f.id;
+    card.dataset.status   = f.status;
+    card.dataset.severity = f.severity;
+    card.dataset.human    = String(!!f.requires_human_approval);
 
-    setBadgeEl(card.querySelector(".finding-category"), f.category);
+    card.querySelector(".finding-id").textContent    = f.id;
+    card.querySelector(".finding-title").textContent = f.title;
+
     setBadgeEl(card.querySelector(".finding-severity"), f.severity);
+    setBadgeEl(card.querySelector(".finding-category"), f.category);
     setBadgeEl(card.querySelector(".finding-status"),   f.status);
 
-    setMetaRow(card, "file",         f.file);
-    setMetaRow(card, "line",         f.line != null ? String(f.line) : null);
-    setMetaRow(card, "evidence",     f.evidence);
-    setMetaRow(card, "suggested_fix",f.suggested_fix);
+    // Location
+    const locFile = card.querySelector(".finding-file");
+    const locLine = card.querySelector(".finding-line");
+    if (f.file) locFile.textContent = f.file;
+    else locFile.style.display = "none";
+    if (f.line != null) locLine.textContent = f.line;
+    else locLine.closest(".loc-line").style.display = "none";
 
-    card.querySelector(".btn-approve").addEventListener("click", () => {
-      apiFindingAction(f.id, "approve", card);
-    });
-    card.querySelector(".btn-reject").addEventListener("click", () => {
-      apiFindingAction(f.id, "reject", card);
-    });
+    // Evidence block
+    const evBlock = card.querySelector(".finding-evidence-block");
+    if (f.evidence) {
+      card.querySelector(".finding-evidence").textContent = f.evidence;
+      evBlock.classList.add("visible");
+    }
+
+    // Fix block
+    const fixBlock = card.querySelector(".finding-fix-block");
+    if (f.suggested_fix) {
+      card.querySelector(".finding-fix").textContent = f.suggested_fix;
+      fixBlock.classList.add("visible");
+    }
+
+    // Actions
+    card.querySelector(".btn-approve").addEventListener("click", () => apiFindingAction(f.id, "approve", card));
+    card.querySelector(".btn-reject").addEventListener("click",  () => apiFindingAction(f.id, "reject",  card));
 
     list.appendChild(card);
   });
 }
 
-/* ── Final Results ─────────────────────────────────────────────── */
 function renderFinalResults(res) {
   if (!res) return;
   setText("res-before",     nullish(res.findings_before));
   setText("res-after",      nullish(res.findings_after));
   setText("res-fixes",      nullish(res.fixes_applied));
-  setText("res-tests-gen",  nullish(res.tests_generated));
-  setText("res-tests-pass", nullish(res.tests_passed));
-  setText("res-tests-fail", nullish(res.tests_failed));
+  // Tests: null means "no tests/ dir found", 0 means ran but none
+  setText("res-tests-gen",  res.tests_generated == null ? "—" : String(res.tests_generated));
+  setText("res-tests-pass", res.tests_passed    == null ? "—" : String(res.tests_passed));
+  setText("res-tests-fail", res.tests_failed    == null ? "—" : String(res.tests_failed));
   setBadge("res-pr-status", res.final_pr_status);
 }
 
-/* ================================================================
-   API actions
-================================================================ */
-function apiFindingAction(findingId, action, cardEl) {
-  fetch(`/api/findings/${encodeURIComponent(findingId)}/${action}`, { method: "POST" })
+/* ── API actions ────────────────────────────────────────────── */
+function apiFindingAction(id, action, cardEl) {
+  fetch(`/api/findings/${encodeURIComponent(id)}/${action}`, { method: "POST" })
     .then(r => {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.json();
     })
     .then(data => {
       cardEl.dataset.status = data.status;
-      const statusBadge = cardEl.querySelector(".finding-status");
-      setBadgeEl(statusBadge, data.status);
+      setBadgeEl(cardEl.querySelector(".finding-status"), data.status);
       if (_state) {
-        const f = (_state.findings || []).find(f => f.id === findingId);
+        const f = (_state.findings || []).find(f => f.id === id);
         if (f) f.status = data.status;
-        refreshOverviewFromState();
+        refreshOverview();
       }
     })
     .catch(err => console.error("Action failed:", err));
 }
 
-function refreshOverviewFromState() {
+function refreshOverview() {
   if (!_state) return;
-  const openCount  = (_state.findings || []).filter(f => f.status === "open").length;
-  const fixedCount = (_state.findings || [])
-    .filter(f => f.status === "approved" || f.status === "fixed").length;
-  setText("res-after", String(openCount));
-  setText("res-fixes", String(fixedCount));
+  const all     = _state.findings || [];
+  const open    = all.filter(f => f.status === "open").length;
+  const fixed   = all.filter(f => f.status === "approved" || f.status === "fixed").length;
+  setText("res-after", String(open));
+  setText("res-fixes", String(fixed));
 
-  const findings   = _state.findings || [];
-  const hasBlocked = findings.some(f => f.requires_human_approval && f.status === "open");
-  const allDone    = findings.every(f => f.status !== "open");
-  const anyDone    = findings.some( f => f.status !== "open");
-  let newStatus = "pending";
-  if (hasBlocked)   newStatus = "blocked";
-  else if (allDone) newStatus = "complete";
-  else if (anyDone) newStatus = "in_progress";
-  setBadge("ov-status",    newStatus);
-  setBadge("res-pr-status",newStatus);
+  const hasBlocked = all.some(f => f.requires_human_approval && f.status === "open");
+  const allDone    = all.every(f => f.status !== "open");
+  const anyDone    = all.some( f => f.status !== "open");
+  let status = "pending";
+  if (hasBlocked)   status = "blocked";
+  else if (allDone) status = "complete";
+  else if (anyDone) status = "in_progress";
+  setBadge("ov-status",    status);
+  setBadge("res-pr-status", status);
 }
 
-/* ================================================================
-   Filters
-================================================================ */
+/* ── Filters ────────────────────────────────────────────────── */
 function bindFilterListeners() {
   ["filter-category", "filter-severity", "filter-status"].forEach(id => {
     document.getElementById(id).addEventListener("change", () => {
@@ -246,44 +261,30 @@ function bindFilterListeners() {
   });
 }
 
-/* ================================================================
-   DOM helpers
-================================================================ */
-function setText(id, value) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = value;
-}
+/* ── DOM helpers ────────────────────────────────────────────── */
+function setText(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
 
-function setBadge(id, value) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  setBadgeEl(el, value);
-}
+function setBadge(id, v) { const el = document.getElementById(id); if (el) setBadgeEl(el, v); }
 
-function setBadgeEl(el, value) {
-  if (!el || !value) return;
+function setBadgeEl(el, v) {
+  if (!el || !v) return;
   el.className = el.className.replace(/badge-\S+/g, "").trim();
-  el.classList.add("badge", `badge-${value.replace(/\s+/g, "_")}`);
-  el.textContent = value.replace(/_/g, " ");
-}
-
-function setMetaRow(card, key, value) {
-  const row = card.querySelector(`.meta-row[data-key="${key}"]`);
-  if (!row) return;
-  if (value == null || value === "") { row.classList.remove("visible"); return; }
-  row.classList.add("visible");
-  const dd = row.querySelector("dd");
-  if (dd) dd.textContent = value;
+  el.classList.add("badge", `badge-${v.replace(/\s+/g, "_")}`);
+  el.textContent = v.replace(/_/g, " ");
 }
 
 function nullish(v) { return v == null ? "—" : String(v); }
 
-function showLoadingMsg() {
+function showLoading() {
   const list = document.getElementById("findings-list");
-  if (list) list.innerHTML = '<p class="loading-msg">Loading findings…</p>';
+  if (list) list.innerHTML = `
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <span>Running agents…</span>
+    </div>`;
 }
 
 function showError(err) {
   const list = document.getElementById("findings-list");
-  if (list) list.innerHTML = `<p class="loading-msg" style="color:#ef4444">Error: ${err.message}</p>`;
+  if (list) list.innerHTML = `<p class="empty-msg" style="color:#f87171">Error: ${err.message}</p>`;
 }

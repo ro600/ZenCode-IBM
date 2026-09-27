@@ -55,6 +55,8 @@ class DashboardState:
     pr: PRMetadata = field(default_factory=PRMetadata)
     findings: list[Finding] = field(default_factory=list)
     reviewer_results: list[ReviewResult] = field(default_factory=list)
+    # Populated by the Flask app after running pytest on the target repo
+    test_counts: dict = field(default_factory=lambda: {"generated": None, "passed": None, "failed": None})
 
     # ---------------------------------------------------------------- #
     # Derived properties used by the dashboard                          #
@@ -163,20 +165,15 @@ class DashboardState:
     # ---------------------------------------------------------------- #
 
     def final_results(self) -> dict:
-        """
-        Summary dict for the Final Results panel.
-
-        Tests-generated / tests-passed / tests-failed are populated by
-        Person 1's test-runner integration; they default to None here so
-        the dashboard can distinguish "not yet run" from "zero".
-        """
+        """Summary dict for the Final Results panel."""
+        tc = self.test_counts
         return {
             "findings_before": self.total_findings,
             "findings_after": len(self.open_findings),
             "fixes_applied": len(self.fixed_findings) + len(self.approved_findings),
-            "tests_generated": None,   # populated by Person 1 runner
-            "tests_passed": None,
-            "tests_failed": None,
+            "tests_generated": tc.get("generated"),
+            "tests_passed":    tc.get("passed"),
+            "tests_failed":    tc.get("failed"),
             "final_pr_status": self.review_status,
         }
 
@@ -187,10 +184,10 @@ class DashboardState:
     def to_dict(self) -> dict:
         return {
             "pr": {
-                "repository": self.pr.repository,
+                "repository":  self.pr.repository,
                 "pull_request": self.pr.pull_request,
-                "branch": self.pr.branch,
-                "author": self.pr.author,
+                "branch":      self.pr.branch,
+                "author":      self.pr.author,
                 "base_branch": self.pr.base_branch,
             },
             "review_status": self.review_status,

@@ -1,5 +1,5 @@
 """
-PRISM Dashboard — Flask application
+PreVise Dashboard — Flask application
 
 Exposes the dashboard UI and a thin REST API so the frontend can:
   - Load the current DashboardState
@@ -18,6 +18,8 @@ Or via the helper script::
 from __future__ import annotations
 
 import os
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -72,6 +74,38 @@ def create_app(
     # In-memory state — rebuilt on demand or on startup
     _state: dict[str, Any] = {"dashboard": None, "repo_root": repo_root, "pr": _pr}
 
+    def _run_pytest(root: Path) -> dict[str, Any]:
+        """Run pytest in the target repo and return test counts."""
+        tests_dir = root / "tests"
+        if not tests_dir.is_dir():
+            return {"generated": None, "passed": None, "failed": None}
+        try:
+            result = subprocess.run(
+                [sys.executable, "-m", "pytest", str(tests_dir), "-q", "--tb=no", "--no-header"],
+                cwd=str(root),
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            stdout = result.stdout + result.stderr
+            # Parse "X passed, Y failed" from pytest summary line
+            import re
+            passed = failed = 0
+            m_pass = re.search(r"(\d+) passed", stdout)
+            m_fail = re.search(r"(\d+) failed", stdout)
+            m_xfail = re.search(r"(\d+) xfailed", stdout)
+            if m_pass:
+                passed = int(m_pass.group(1))
+            if m_fail:
+                failed = int(m_fail.group(1))
+            # xfailed counts as passing (expected failures)
+            if m_xfail:
+                passed += int(m_xfail.group(1))
+            total = passed + failed
+            return {"generated": total if total > 0 else None, "passed": passed, "failed": failed}
+        except Exception:
+            return {"generated": None, "passed": None, "failed": None}
+
     def _build_state() -> DashboardState:
         from prism.models import ReviewResult
         current_pr   = _state["pr"]
@@ -118,6 +152,9 @@ def create_app(
             agg.add_result(result)
 
         state = agg.build()
+        # Run pytest and attach test counts to state
+        test_counts = _run_pytest(current_root)
+        state.test_counts = test_counts
         _state["dashboard"] = state
         return state
 
@@ -139,16 +176,21 @@ def create_app(
     # API — state                                                        #
     # ---------------------------------------------------------------- #
 
+    def _enrich(d: dict) -> dict:
+        """Add repo_root to any state dict so the UI can show it."""
+        d["repo_root"] = str(_state["repo_root"])
+        return d
+
     @app.route("/api/state")
     def api_state():
         """Return the full DashboardState as JSON."""
-        return jsonify(_get_state().to_dict())
+        return jsonify(_enrich(_get_state().to_dict()))
 
     @app.route("/api/refresh", methods=["POST"])
     def api_refresh():
         """Re-run all reviewers and return fresh state."""
         state = _build_state()
-        return jsonify(state.to_dict())
+        return jsonify(_enrich(state.to_dict()))
 
     # ---------------------------------------------------------------- #
     # API — finding actions                                              #
@@ -175,7 +217,7 @@ def create_app(
         )
         _state["dashboard"] = None   # force rebuild on next request
         state = _build_state()
-        return jsonify(state.to_dict())
+        return jsonify(_enrich(state.to_dict()))
 
     @app.route("/api/findings/<finding_id>/approve", methods=["POST"])
     def api_approve(finding_id: str):
