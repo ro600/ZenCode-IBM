@@ -30,4 +30,4 @@ if __name__ == "__main__":
     )
     app = create_app(repo_root=repo, pr_metadata=pr)
     print(f"  PRISM Dashboard running at  http://localhost:{port}")
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=False)
